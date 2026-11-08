@@ -1,0 +1,166 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="space-y-5 max-w-2xl mx-auto">
+
+    <!-- Month switcher -->
+    <div class="flex items-center justify-between bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 shadow-xl">
+        <a href="?y={{ prev_y }}&m={{ prev_m }}" class="nav-btn" title="Предыдущий месяц">
+            <i class="fa-solid fa-chevron-left"></i>
+        </a>
+        <h2 class="text-base font-bold text-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-chart-column text-indigo-400"></i> {{ month_label }} {{ year }}
+        </h2>
+        {% if has_next %}
+        <a href="?y={{ next_y }}&m={{ next_m }}" class="nav-btn" title="Следующий месяц">
+            <i class="fa-solid fa-chevron-right"></i>
+        </a>
+        {% else %}
+        <span class="nav-btn opacity-30 cursor-not-allowed"><i class="fa-solid fa-chevron-right"></i></span>
+        {% endif %}
+    </div>
+
+    <!-- Summary cards -->
+    <div class="grid grid-cols-2 gap-3">
+        <div class="stat-card">
+            <div class="stat-value text-indigo-400">{{ total_text }}</div>
+            <div class="stat-label">Всего за месяц</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value text-emerald-400">{{ active_days }}</div>
+            <div class="stat-label">Активных дней</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value text-amber-400">{{ avg_text }}</div>
+            <div class="stat-label">В среднем за активный день</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value text-purple-400">{{ best_text }}</div>
+            <div class="stat-label">Лучший день{% if best_day %} · {{ best_day }}-е{% endif %}</div>
+        </div>
+    </div>
+
+    <!-- Daily chart -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl">
+        <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-chart-simple text-indigo-400"></i> Минуты по дням
+        </h3>
+        {% if total_minutes %}
+        <div class="relative h-56">
+            <canvas id="daily-chart"></canvas>
+        </div>
+        {% else %}
+        <p class="text-xs text-slate-500 text-center py-10">В этом месяце записей пока нет.</p>
+        {% endif %}
+    </div>
+
+    <!-- By habit -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl">
+        <h3 class="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-list-check text-indigo-400"></i> По привычкам
+        </h3>
+        <div class="space-y-4">
+            {% for h in habit_rows %}
+            <div>
+                <div class="flex justify-between text-xs mb-1.5">
+                    <span class="font-medium text-slate-200 truncate pr-3">{{ h.title }}</span>
+                    <span class="text-slate-400 whitespace-nowrap"><span class="font-bold text-slate-100">{{ h.text }}</span> · {{ h.pct }}%</span>
+                </div>
+                <div class="w-full h-2 bg-slate-900 rounded-full overflow-hidden">
+                    <div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500" style="width: {{ h.pct }}%"></div>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-xs text-slate-500 text-center py-4">Нет данных за этот месяц.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Heatmap -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 shadow-xl">
+        <h3 class="text-sm font-bold text-slate-300 mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-fire text-orange-400"></i> Активность за 12 недель
+        </h3>
+        <p class="text-[11px] text-slate-500 mb-4">Чем ярче клетка, тем больше времени в этот день.</p>
+
+        <div class="overflow-x-auto pb-1">
+            <div class="heatmap">
+                {% for c in heatmap %}
+                <div class="hm-cell {% if c.future %}hm-future{% else %}hm-l{{ c.level }}{% endif %}"
+                     title="{{ c.label }}{% if not c.future %}: {{ c.minutes }} мин{% endif %}"></div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-1.5 mt-3 text-[10px] text-slate-500">
+            Меньше
+            <span class="hm-cell hm-l0"></span><span class="hm-cell hm-l1"></span><span class="hm-cell hm-l2"></span><span class="hm-cell hm-l3"></span><span class="hm-cell hm-l4"></span>
+            Больше
+        </div>
+    </div>
+</div>
+
+{{ chart_data|json_script:"chart-data" }}
+
+<style>
+    .nav-btn {
+        width: 36px; height: 36px; border-radius: 10px; font-size: 12px;
+        background: #0f172a; border: 1px solid #334155; color: #94a3b8;
+        display: flex; align-items: center; justify-content: center; transition: all .15s;
+    }
+    a.nav-btn:hover { border-color: #6366f1; color: #c7d2fe; }
+
+    .stat-card {
+        background: #1e293b; border: 1px solid #334155; border-radius: 16px;
+        padding: 16px; text-align: center; box-shadow: 0 10px 25px -10px rgba(0,0,0,.5);
+    }
+    .stat-value { font-size: 22px; font-weight: 900; line-height: 1.2; }
+    .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #64748b; margin-top: 4px; }
+
+    .heatmap {
+        display: grid; grid-template-rows: repeat(7, 14px); grid-auto-flow: column;
+        grid-auto-columns: 14px; gap: 4px; width: max-content;
+    }
+    .hm-cell { width: 14px; height: 14px; border-radius: 4px; display: inline-block; }
+    .hm-l0 { background: #0f172a; border: 1px solid #1e293b; }
+    .hm-l1 { background: #312e81; }
+    .hm-l2 { background: #4338ca; }
+    .hm-l3 { background: #6366f1; }
+    .hm-l4 { background: #a5b4fc; }
+    .hm-future { background: transparent; border: 1px dashed #1e293b; }
+</style>
+
+{% if total_minutes %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+(function() {
+    const data = JSON.parse(document.getElementById('chart-data').textContent);
+    const ctx = document.getElementById('daily-chart');
+    if (!ctx || !window.Chart) return;
+
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Минуты',
+                data: data.values,
+                backgroundColor: data.values.map(v => v > 0 ? '#6366f1' : '#1e293b'),
+                borderRadius: 4,
+                maxBarThickness: 16,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#64748b', font: { size: 10 }, maxTicksLimit: 16 }, grid: { display: false } },
+                y: { beginAtZero: true, ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } }
+            }
+        }
+    });
+})();
+</script>
+{% endif %}
+{% endblock %}

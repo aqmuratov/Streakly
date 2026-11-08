@@ -1,0 +1,362 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="space-y-5 max-w-2xl mx-auto">
+
+    <!-- Django messages (toast) -->
+    {% if messages %}
+    <div id="toast-box" class="space-y-2">
+        {% for message in messages %}
+        <div class="toast bg-slate-800 border border-indigo-500/40 text-slate-200 text-xs font-medium rounded-xl px-4 py-3 shadow-lg flex items-center gap-2">
+            <i class="fa-solid fa-circle-info text-indigo-400"></i> {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Summary card -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-40 h-40 bg-indigo-600/10 rounded-full blur-2xl"></div>
+        <div class="relative">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold flex items-center gap-2 text-indigo-400">
+                    <i class="fa-solid fa-calendar-check"></i> Ежедневные привычки
+                </h2>
+                <span id="summary-count" class="text-xs font-bold text-slate-400">0 / 0</span>
+            </div>
+
+            <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden">
+                <div id="summary-bar" class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500" style="width:0%; transition: width .6s ease;"></div>
+            </div>
+            <p id="summary-text" class="text-xs text-slate-500 mt-2">Сегодня ещё ничего не выполнено</p>
+
+            <div id="all-done-banner" class="hidden mt-4 text-center bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-xl py-2.5">
+                🎉 Все привычки на сегодня выполнены! Отличная работа!
+            </div>
+        </div>
+    </div>
+
+    <!-- Add form -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
+        <h3 class="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+            <i class="fa-solid fa-plus text-indigo-400"></i> Новая привычка
+        </h3>
+        <form action="{% url 'add_habit' %}" method="POST" class="space-y-3">
+            {% csrf_token %}
+            <div class="flex flex-wrap gap-2">
+                <input type="text" name="title" placeholder="Например: Английский, спорт, чтение..." required maxlength="100"
+                       class="bg-slate-900 border border-slate-700 text-sm rounded-xl px-4 py-2.5 flex-grow min-w-[140px] focus:outline-none focus:border-indigo-500 text-slate-100">
+                <input type="number" name="daily_goal_minutes" id="add-goal" placeholder="мин/день" min="1" max="1440" value="30"
+                       class="bg-slate-900 border border-slate-700 text-sm rounded-xl px-3 py-2.5 w-28 focus:outline-none focus:border-indigo-500 text-slate-100">
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition shadow-lg shadow-indigo-600/20">
+                    Добавить
+                </button>
+            </div>
+            <div class="flex flex-wrap gap-2 items-center">
+                <span class="text-[11px] text-slate-500">Быстро:</span>
+                <button type="button" class="preset" data-min="15">15 мин</button>
+                <button type="button" class="preset" data-min="30">30 мин</button>
+                <button type="button" class="preset" data-min="45">45 мин</button>
+                <button type="button" class="preset" data-min="60">1 час</button>
+                <button type="button" class="preset" data-min="120">2 часа</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- List card -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
+
+        {% if habits %}
+        <!-- Search + filters -->
+        <div class="flex flex-wrap gap-2 items-center mb-4">
+            <div class="relative flex-grow min-w-[140px]">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                <input type="text" id="search-input" placeholder="Поиск..."
+                       class="w-full bg-slate-900 border border-slate-700 text-xs rounded-xl pl-8 pr-3 py-2 focus:outline-none focus:border-indigo-500 text-slate-100">
+            </div>
+            <div class="flex gap-1.5" id="filters">
+                <button type="button" class="filter-btn active-filter" data-filter="all">Все</button>
+                <button type="button" class="filter-btn" data-filter="pending">Осталось</button>
+                <button type="button" class="filter-btn" data-filter="done">Готово</button>
+            </div>
+            <select id="sort-select"
+                    class="bg-slate-900 border border-slate-700 text-xs rounded-xl px-2.5 py-2 text-slate-300 focus:outline-none focus:border-indigo-500">
+                <option value="default">По умолчанию</option>
+                <option value="streak">По серии 🔥</option>
+                <option value="goal">По цели</option>
+                <option value="name">По имени</option>
+            </select>
+        </div>
+        {% endif %}
+
+        <div class="space-y-3" id="habit-list">
+            {% for habit in habits %}
+            <div class="habit-card flex justify-between items-center gap-3 bg-slate-900/60 border border-slate-700/50 p-4 rounded-xl hover:border-slate-600 transition"
+                 data-title="{{ habit.title|lower }}"
+                 data-done="{% if habit.id in today_completed_habits %}1{% else %}0{% endif %}"
+                 data-streak="{{ habit.streak|default:0 }}"
+                 data-goal="{{ habit.daily_goal_minutes }}"
+                 data-index="{{ forloop.counter }}">
+
+                <div class="flex flex-col gap-1 min-w-0">
+                    <div class="flex items-center flex-wrap gap-2">
+                        <span class="font-medium text-slate-200 truncate">{{ habit.title }}</span>
+                        <span class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                            🔥 {{ habit.streak|default:0 }} д
+                        </span>
+                    </div>
+                    <span class="text-xs text-slate-500 flex items-center gap-1">
+                        <i class="fa-solid fa-bullseye text-indigo-400"></i> {{ habit.daily_goal_minutes }} мин/день
+                    </span>
+                    <div class="w-full max-w-[180px] h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
+                        <div class="h-full rounded-full {% if habit.id in today_completed_habits %}bg-emerald-500{% else %}bg-indigo-500{% endif %}" style="width: {{ habit.progress_pct|default:0 }}%"></div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                    {% if habit.id in today_completed_habits %}
+                    <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap">
+                        <i class="fa-solid fa-check"></i> Выполнено (+10 XP)
+                    </span>
+                    {% else %}
+                    <span class="bg-slate-800 border border-slate-700 text-xs font-medium text-slate-400 px-3 py-1.5 rounded-lg whitespace-nowrap" title="Привычка засчитывается только после таймера">
+                        <i class="fa-solid fa-hourglass-half text-amber-400"></i>
+                        <span class="font-bold text-slate-200">{{ habit.today_minutes|default:0 }}</span> / {{ habit.daily_goal_minutes }} мин
+                    </span>
+                    {% endif %}
+
+                    <!-- Edit -->
+                    <button type="button" class="icon-btn hover:text-indigo-400" title="Изменить"
+                            data-action="edit"
+                            data-url="{% url 'edit_habit' habit.id %}"
+                            data-title="{{ habit.title }}"
+                            data-goal="{{ habit.daily_goal_minutes }}">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+
+                    <!-- Delete -->
+                    <button type="button" class="icon-btn hover:text-rose-400" title="Удалить"
+                            data-action="delete"
+                            data-url="{% url 'delete_habit' habit.id %}"
+                            data-title="{{ habit.title }}">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-10">
+                <div class="text-4xl mb-2">🌱</div>
+                <p class="text-slate-400 text-sm font-medium">Список привычек пуст</p>
+                <p class="text-slate-500 text-xs mt-1">Добавьте первую привычку выше и начните серию.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <p id="no-results" class="hidden text-slate-500 text-sm text-center py-6">Ничего не найдено.</p>
+    </div>
+</div>
+
+<!-- Delete modal -->
+<div id="delete-modal" class="modal-wrap hidden">
+    <div class="modal-box">
+        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+            <i class="fa-solid fa-trash"></i>
+        </div>
+        <h3 class="text-base font-bold text-slate-100 text-center">Удалить привычку?</h3>
+        <p class="text-xs text-slate-400 text-center mt-2">
+            «<span id="delete-title" class="font-semibold text-slate-200"></span>» и вся её история будут удалены. Это действие нельзя отменить.
+        </p>
+        <form id="delete-form" method="POST" class="flex gap-2 mt-5">
+            {% csrf_token %}
+            <button type="button" data-close class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold py-2.5 rounded-xl transition">Отмена</button>
+            <button type="submit" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold py-2.5 rounded-xl transition">Удалить</button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit modal -->
+<div id="edit-modal" class="modal-wrap hidden">
+    <div class="modal-box">
+        <h3 class="text-base font-bold text-slate-100 mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-pen text-indigo-400"></i> Изменить привычку
+        </h3>
+        <form id="edit-form" method="POST" class="space-y-3">
+            {% csrf_token %}
+            <div>
+                <label class="text-[11px] text-slate-500 block mb-1">Название</label>
+                <input type="text" name="title" id="edit-title" required maxlength="100"
+                       class="w-full bg-slate-900 border border-slate-700 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 text-slate-100">
+            </div>
+            <div>
+                <label class="text-[11px] text-slate-500 block mb-1">Цель (минут в день)</label>
+                <input type="number" name="daily_goal_minutes" id="edit-goal" min="1" max="1440" required
+                       class="w-full bg-slate-900 border border-slate-700 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 text-slate-100">
+            </div>
+            <div class="flex gap-2 pt-2">
+                <button type="button" data-close class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold py-2.5 rounded-xl transition">Отмена</button>
+                <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold py-2.5 rounded-xl transition">Сохранить</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .preset {
+        font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;
+        background: #0f172a; border: 1px solid #334155; color: #94a3b8; transition: all .15s; cursor: pointer;
+    }
+    .preset:hover { border-color: #6366f1; color: #c7d2fe; }
+
+    .filter-btn {
+        font-size: 11px; font-weight: 600; padding: 6px 12px; border-radius: 9999px;
+        background: #0f172a; border: 1px solid #334155; color: #94a3b8; transition: all .15s; cursor: pointer;
+    }
+    .filter-btn.active-filter { background: #6366f1; border-color: #6366f1; color: #fff; }
+
+    .icon-btn {
+        width: 32px; height: 32px; border-radius: 10px; font-size: 12px;
+        background: #1e293b; border: 1px solid #334155; color: #64748b;
+        display: flex; align-items: center; justify-content: center; transition: all .15s; cursor: pointer;
+    }
+    .icon-btn:hover { border-color: #475569; }
+
+    .modal-wrap {
+        position: fixed; inset: 0; z-index: 60; padding: 16px;
+        background: rgba(2, 6, 23, .75); backdrop-filter: blur(4px);
+        display: flex; align-items: center; justify-content: center;
+    }
+    .modal-wrap.hidden { display: none; }
+    .modal-box {
+        width: 100%; max-width: 360px; background: #1e293b; border: 1px solid #334155;
+        border-radius: 20px; padding: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
+        animation: pop .18s ease-out;
+    }
+    @keyframes pop { from { opacity: 0; transform: scale(.94) translateY(8px); } to { opacity: 1; transform: none; } }
+
+    .habit-card.removing { opacity: 0; transform: translateX(16px); transition: all .25s; }
+    .toast { animation: pop .2s ease-out; transition: opacity .4s; }
+</style>
+
+<script>
+(function() {
+    const list = document.getElementById('habit-list');
+    const cards = Array.from(document.querySelectorAll('.habit-card'));
+
+    // ---------- Umumiy progress ----------
+    const total = cards.length;
+    const done = cards.filter(c => c.dataset.done === '1').length;
+    const pct = total ? Math.round(done / total * 100) : 0;
+
+    document.getElementById('summary-count').textContent = `${done} / ${total}`;
+    requestAnimationFrame(() => {
+        document.getElementById('summary-bar').style.width = pct + '%';
+    });
+
+    const summaryText = document.getElementById('summary-text');
+    if (total === 0) {
+        summaryText.textContent = 'Добавьте первую привычку, чтобы начать';
+    } else if (done === 0) {
+        summaryText.textContent = 'Сегодня ещё ничего не выполнено. Самое время начать!';
+    } else if (done < total) {
+        summaryText.textContent = `Выполнено ${pct}%. Осталось ещё ${total - done}.`;
+    } else {
+        document.getElementById('all-done-banner').classList.remove('hidden');
+        summaryText.textContent = 'Дневной план выполнен на 100%';
+    }
+
+    // ---------- Tezkor maqsad tugmalari ----------
+    document.querySelectorAll('.preset').forEach(b => {
+        b.addEventListener('click', () => {
+            document.getElementById('add-goal').value = b.dataset.min;
+        });
+    });
+
+    // ---------- Qidiruv, filtr, saralash ----------
+    const searchInput = document.getElementById('search-input');
+    const sortSelect = document.getElementById('sort-select');
+    const noResults = document.getElementById('no-results');
+    let currentFilter = 'all';
+
+    function applyView() {
+        if (!list || !cards.length) return;
+        const q = searchInput ? searchInput.value.trim().toLowerCase() : '';
+        let visible = 0;
+
+        cards.forEach(c => {
+            const matchText = !q || c.dataset.title.includes(q);
+            const isDone = c.dataset.done === '1';
+            const matchFilter = currentFilter === 'all'
+                || (currentFilter === 'done' && isDone)
+                || (currentFilter === 'pending' && !isDone);
+            const show = matchText && matchFilter;
+            c.classList.toggle('hidden', !show);
+            if (show) visible++;
+        });
+
+        noResults.classList.toggle('hidden', visible > 0);
+
+        const mode = sortSelect ? sortSelect.value : 'default';
+        const sorted = cards.slice().sort((a, b) => {
+            if (mode === 'streak') return (+b.dataset.streak) - (+a.dataset.streak);
+            if (mode === 'goal') return (+b.dataset.goal) - (+a.dataset.goal);
+            if (mode === 'name') return a.dataset.title.localeCompare(b.dataset.title);
+            return (+a.dataset.index) - (+b.dataset.index);
+        });
+        sorted.forEach(c => list.appendChild(c));
+    }
+
+    if (searchInput) searchInput.addEventListener('input', applyView);
+    if (sortSelect) sortSelect.addEventListener('change', applyView);
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            currentFilter = btn.dataset.filter;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active-filter', b === btn));
+            applyView();
+        });
+    });
+
+    // ---------- Modallar ----------
+    const deleteModal = document.getElementById('delete-modal');
+    const editModal = document.getElementById('edit-modal');
+
+    function openModal(m) { m.classList.remove('hidden'); }
+    function closeModals() {
+        deleteModal.classList.add('hidden');
+        editModal.classList.add('hidden');
+    }
+
+    document.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.dataset.action === 'delete') {
+                document.getElementById('delete-title').textContent = btn.dataset.title;
+                document.getElementById('delete-form').action = btn.dataset.url;
+                openModal(deleteModal);
+            } else if (btn.dataset.action === 'edit') {
+                document.getElementById('edit-title').value = btn.dataset.title;
+                document.getElementById('edit-goal').value = btn.dataset.goal;
+                document.getElementById('edit-form').action = btn.dataset.url;
+                openModal(editModal);
+                document.getElementById('edit-title').focus();
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModals));
+    [deleteModal, editModal].forEach(m => {
+        m.addEventListener('click', e => { if (e.target === m) closeModals(); });
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModals(); });
+
+    // Delete formasi yuborilganda kartani silliq yo'qotamiz
+    document.getElementById('delete-form').addEventListener('submit', () => {
+        closeModals();
+    });
+
+    // ---------- Toast'larni avtomatik yopish ----------
+    document.querySelectorAll('.toast').forEach(t => {
+        setTimeout(() => { t.style.opacity = '0'; }, 3500);
+        setTimeout(() => { t.remove(); }, 4000);
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
+    <h2 class="text-lg font-bold text-yellow-400 mb-6 flex items-center gap-2">
+        <i class="fa-solid fa-trophy"></i> Таблица лидеров
+    </h2>
+    <div class="space-y-3">
+        {% for item in leaderboard %}
+        <div class="flex justify-between items-center p-3.5 rounded-xl {% if item.user == user %}bg-indigo-600/20 border border-indigo-500/50{% else %}bg-slate-900/40{% endif %}">
+            <div class="flex items-center space-x-3">
+                <span class="text-xs font-bold w-5 text-slate-500">#{{ forloop.counter }}</span>
+                <span class="text-sm font-medium text-slate-200">{{ item.user.username }}</span>
+            </div>
+            <span class="text-xs font-bold text-yellow-400">⚡ {{ item.total_xp }} XP</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

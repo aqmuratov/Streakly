@@ -1,0 +1,31 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
+    <h2 class="text-lg font-bold flex items-center gap-2 mb-6 text-indigo-400">
+        <i class="fa-solid fa-list-check"></i> Список задач
+    </h2>
+
+    <form action="{% url 'add_task' %}" method="POST" class="flex gap-2 mb-6">
+        {% csrf_token %}
+        <input type="text" name="title" placeholder="Новая задача..." required 
+               class="bg-slate-900 border border-slate-700 text-sm rounded-xl px-4 py-2.5 flex-grow focus:outline-none focus:border-indigo-500 text-slate-100">
+        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-5 py-2.5 rounded-xl transition">
+            Создать
+        </button>
+    </form>
+
+    <div class="space-y-3">
+        {% for task in tasks %}
+        <div class="flex justify-between items-center bg-slate-900/60 border border-slate-700/50 p-4 rounded-xl">
+            <span class="text-slate-200 text-sm">{{ task.title }}</span>
+            <a href="{% url 'complete_task' task.id %}" class="bg-indigo-600/20 hover:bg-indigo-600 border border-indigo-500/40 text-indigo-300 hover:text-white text-xs font-medium px-3 py-1.5 rounded-lg transition">
+                Завершить (+15 XP)
+            </a>
+        </div>
+        {% empty %}
+        <p class="text-slate-500 text-sm text-center py-4">Активных задач нет.</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

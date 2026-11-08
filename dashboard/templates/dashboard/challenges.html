@@ -1,0 +1,136 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="space-y-5 max-w-2xl mx-auto pb-24">
+
+    {% if messages %}
+    <div id="toast-box" class="space-y-2">
+        {% for message in messages %}
+        <div class="toast bg-slate-800 border border-indigo-500/40 text-slate-200 text-xs font-medium rounded-xl px-4 py-3 shadow-lg flex items-center gap-2">
+            <i class="fa-solid fa-circle-info text-indigo-400"></i> {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- List -->
+    {% for c in challenges %}
+    <div class="bg-slate-800 border rounded-2xl p-6 shadow-xl
+                {% if c.status == 'success' %}border-emerald-500/40{% elif c.status == 'finished' %}border-slate-600{% else %}border-slate-700{% endif %}">
+
+        <div class="flex justify-between items-start gap-3">
+            <div class="min-w-0">
+                <div class="flex items-center flex-wrap gap-2">
+                    <h3 class="font-bold text-slate-100 truncate">{{ c.title }}</h3>
+                    {% if c.status == 'success' %}
+                    <span class="text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">Выполнен 🏆</span>
+                    {% elif c.status == 'finished' %}
+                    <span class="text-[10px] font-bold uppercase bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">Завершён</span>
+                    {% else %}
+                    <span class="text-[10px] font-bold uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full">Идёт</span>
+                    {% endif %}
+                </div>
+                <p class="text-xs text-slate-400 mt-1">{{ c.goal }}</p>
+                <p class="text-[11px] text-slate-500 mt-1.5 flex items-center gap-1">
+                    <i class="fa-solid fa-link text-indigo-400"></i> {{ c.habit.title }} · {{ c.habit.daily_goal_minutes }} мин/день
+                </p>
+            </div>
+
+            <form action="{% url 'delete_challenge' c.id %}" method="POST" class="shrink-0"
+                  onsubmit="return confirm('Удалить челлендж?');">
+                {% csrf_token %}
+                <button type="submit" class="icon-btn hover:text-rose-400" title="Удалить">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- Progress -->
+        <div class="mt-4">
+            <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-400">Выполнено дней: <span class="font-bold text-slate-200">{{ c.done_days }}</span> / {{ c.days }}</span>
+                <span class="font-bold {% if c.status == 'success' %}text-emerald-400{% else %}text-indigo-400{% endif %}">{{ c.pct }}%</span>
+            </div>
+            <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden">
+                <div class="h-full rounded-full {% if c.status == 'success' %}bg-emerald-500{% else %}bg-gradient-to-r from-indigo-500 to-purple-500{% endif %}"
+                     style="width: {{ c.pct }}%"></div>
+            </div>
+        </div>
+
+        <!-- Day cells -->
+        <div class="flex flex-wrap gap-1.5 mt-4">
+            {% for cell in c.cells %}
+            <div class="day-cell day-{{ cell.state }}" title="День {{ cell.day }}">{{ cell.day }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- Footer stats -->
+        <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+            <div class="bg-slate-900/60 border border-slate-700/50 rounded-xl py-2">
+                <div class="text-sm font-black text-slate-100">{{ c.day_number }}</div>
+                <div class="text-[10px] text-slate-500 uppercase">День</div>
+            </div>
+            <div class="bg-slate-900/60 border border-slate-700/50 rounded-xl py-2">
+                <div class="text-sm font-black text-slate-100">{{ c.days_left }}</div>
+                <div class="text-[10px] text-slate-500 uppercase">Осталось</div>
+            </div>
+            <div class="bg-slate-900/60 border border-slate-700/50 rounded-xl py-2">
+                <div class="text-sm font-black {% if c.missed_days %}text-rose-400{% else %}text-slate-100{% endif %}">{{ c.missed_days }}</div>
+                <div class="text-[10px] text-slate-500 uppercase">Пропущено</div>
+            </div>
+        </div>
+
+        {% if c.status == 'active' %}
+        <p class="text-xs mt-3 text-center {% if c.today_done %}text-emerald-400{% else %}text-amber-400{% endif %}">
+            {% if c.today_done %}
+            <i class="fa-solid fa-circle-check"></i> Сегодняшняя цель выполнена
+            {% else %}
+            <i class="fa-solid fa-hourglass-half"></i> Сегодня нужно набрать {{ c.habit.daily_goal_minutes }} мин через таймер
+            {% endif %}
+        </p>
+        {% endif %}
+    </div>
+    {% empty %}
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-8 text-center shadow-xl">
+        <div class="text-4xl mb-2">🏁</div>
+        <p class="text-slate-400 text-sm font-medium">Пока нет челленджей</p>
+        <p class="text-slate-500 text-xs mt-1">Нажмите «+» справа внизу и начните серию.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Floating add button -->
+<a href="{% url 'new_challenge' %}" title="Новый челлендж"
+   class="fab fixed right-5 bottom-28 md:right-8 w-14 h-14 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center text-xl shadow-xl shadow-indigo-600/40 transition active:scale-95 z-40">
+    <i class="fa-solid fa-plus"></i>
+</a>
+
+<style>
+    .icon-btn {
+        width: 32px; height: 32px; border-radius: 10px; font-size: 12px;
+        background: #1e293b; border: 1px solid #334155; color: #64748b;
+        display: flex; align-items: center; justify-content: center; transition: all .15s; cursor: pointer;
+    }
+
+    .day-cell {
+        width: 26px; height: 26px; border-radius: 8px; font-size: 10px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .day-done   { background: #10b981; color: #022c22; }
+    .day-missed { background: rgba(244, 63, 94, .15); color: #fb7185; border: 1px solid rgba(244, 63, 94, .3); }
+    .day-today  { background: #0f172a; color: #a5b4fc; border: 2px solid #6366f1; }
+    .day-future { background: #0f172a; color: #475569; border: 1px solid #1e293b; }
+
+    @keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .toast { animation: pop .2s ease-out; transition: opacity .4s; }
+</style>
+
+<script>
+(function() {
+    document.querySelectorAll('.toast').forEach(t => {
+        setTimeout(() => { t.style.opacity = '0'; }, 3500);
+        setTimeout(() => { t.remove(); }, 4000);
+    });
+})();
+</script>
+{% endblock %}

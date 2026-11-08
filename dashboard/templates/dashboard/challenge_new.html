@@ -1,0 +1,109 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="space-y-5 max-w-2xl mx-auto">
+
+    <a href="{% url 'challenges' %}" class="inline-flex items-center gap-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition">
+        <i class="fa-solid fa-arrow-left"></i> Назад к челленджам
+    </a>
+
+    {% if messages %}
+    <div id="toast-box" class="space-y-2">
+        {% for message in messages %}
+        <div class="toast bg-slate-800 border border-indigo-500/40 text-slate-200 text-xs font-medium rounded-xl px-4 py-3 shadow-lg flex items-center gap-2">
+            <i class="fa-solid fa-circle-info text-indigo-400"></i> {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Add challenge -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-40 h-40 bg-purple-600/10 rounded-full blur-2xl"></div>
+        <div class="relative">
+            <h2 class="text-lg font-bold flex items-center gap-2 mb-1 text-indigo-400">
+                <i class="fa-solid fa-trophy"></i> Новый челлендж
+            </h2>
+            <p class="text-xs text-slate-500 mb-4">День засчитывается, когда по привычке набрана дневная цель через таймер.</p>
+
+            {% if habits %}
+            <form action="{% url 'add_challenge' %}" method="POST" class="space-y-3">
+                {% csrf_token %}
+                <div>
+                    <label class="text-[11px] text-slate-500 block mb-1">Название</label>
+                    <input type="text" name="title" required maxlength="100" placeholder="Например: 30 дней английского"
+                           class="w-full bg-slate-900 border border-slate-700 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 text-slate-100">
+                </div>
+
+                <div>
+                    <label class="text-[11px] text-slate-500 block mb-1">Главная цель</label>
+                    <textarea name="goal" required maxlength="300" rows="2" placeholder="Например: выйти на уровень B1 и свободно говорить"
+                              class="w-full bg-slate-900 border border-slate-700 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 text-slate-100 resize-none"></textarea>
+                </div>
+
+                <div class="flex flex-wrap gap-3">
+                    <div class="flex-1 min-w-[140px]">
+                        <label class="text-[11px] text-slate-500 block mb-1">Длительность (дней)</label>
+                        <input type="number" name="days" id="ch-days" value="30" min="1" max="365" required
+                               class="w-full bg-slate-900 border border-slate-700 text-sm rounded-xl px-4 py-2.5 focus:outline-none focus:border-indigo-500 text-slate-100">
+                    </div>
+                    <div class="flex-1 min-w-[160px]">
+                        <label class="text-[11px] text-slate-500 block mb-1">Привычка (считается по таймеру)</label>
+                        <select name="habit_id" required
+                                class="w-full bg-slate-900 border border-slate-700 text-sm rounded-xl px-3 py-2.5 focus:outline-none focus:border-indigo-500 text-slate-100">
+                            {% for h in habits %}
+                            <option value="{{ h.id }}">{{ h.title }} ({{ h.daily_goal_minutes }} мин/день)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-[11px] text-slate-500">Быстро:</span>
+                    <button type="button" class="preset" data-days="7">7 дней</button>
+                    <button type="button" class="preset" data-days="14">14 дней</button>
+                    <button type="button" class="preset" data-days="21">21 день</button>
+                    <button type="button" class="preset" data-days="30">30 дней</button>
+                    <button type="button" class="preset" data-days="60">60 дней</button>
+                    <button type="button" class="preset" data-days="90">90 дней</button>
+                </div>
+
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold px-5 py-3 rounded-xl transition shadow-lg shadow-indigo-600/20">
+                    <i class="fa-solid fa-rocket"></i> Начать челлендж
+                </button>
+            </form>
+            {% else %}
+            <p class="text-sm text-slate-400 py-4 text-center">
+                Сначала нужна хотя бы одна привычка.<br>
+                <a href="{% url 'habits' %}" class="text-indigo-400 underline font-medium">Добавить привычку</a>
+            </p>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<style>
+    .preset {
+        font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 9999px;
+        background: #0f172a; border: 1px solid #334155; color: #94a3b8; transition: all .15s; cursor: pointer;
+    }
+    .preset:hover { border-color: #6366f1; color: #c7d2fe; }
+    @keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    .toast { animation: pop .2s ease-out; transition: opacity .4s; }
+</style>
+
+<script>
+(function() {
+    document.querySelectorAll('.preset').forEach(b => {
+        b.addEventListener('click', () => {
+            document.getElementById('ch-days').value = b.dataset.days;
+        });
+    });
+    document.querySelectorAll('.toast').forEach(t => {
+        setTimeout(() => { t.style.opacity = '0'; }, 3500);
+        setTimeout(() => { t.remove(); }, 4000);
+    });
+})();
+</script>
+{% endblock %}

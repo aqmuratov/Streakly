@@ -1,0 +1,21 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="space-y-6 text-center py-8">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-xl">
+        <h1 class="text-2xl font-black text-slate-100 mb-2">Добро пожаловать в Discipline OS</h1>
+        <p class="text-slate-400 text-sm mb-6">Выберите нужный раздел в нижнем меню для управления задачами, привычками и временем.</p>
+        
+        <div class="grid grid-cols-2 gap-4 max-w-sm mx-auto">
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-700/50">
+                <span class="text-xs text-slate-500 block mb-1">Уровень</span>
+                <span class="text-xl font-bold text-indigo-400">{{ profile.level }}</span>
+            </div>
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-700/50">
+                <span class="text-xs text-slate-500 block mb-1">Время сегодня</span>
+                <span class="text-xl font-bold text-amber-400">{{ total_time }} мин</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

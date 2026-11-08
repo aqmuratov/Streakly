@@ -1,0 +1,366 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+{% if messages %}
+<div class="max-w-md mx-auto mb-4 space-y-2">
+    {% for message in messages %}
+    <div class="bg-slate-800 border border-indigo-500/40 text-slate-200 text-xs font-medium rounded-xl px-4 py-3 shadow-lg">{{ message }}</div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="space-y-6 max-w-md mx-auto">
+
+    <!-- Timer Card -->
+    <div class="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-xl text-center relative overflow-hidden">
+
+        <h2 class="text-sm font-bold text-slate-300 mb-4 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-clock text-indigo-400"></i> Таймер привычки
+        </h2>
+
+        {% if habits_data %}
+        <!-- Habit selector -->
+        <div class="flex flex-wrap justify-center gap-2 mb-5" id="habit-pills">
+            {% for h in habits_data %}
+            <button type="button" class="habit-pill" data-id="{{ h.id }}" data-title="{{ h.title }}" data-goal="{{ h.goal }}" data-done="{{ h.done }}">
+                {{ h.title }}
+            </button>
+            {% endfor %}
+        </div>
+
+        <!-- Selected habit info -->
+        <div id="habit-info" class="mb-4">
+            <p class="text-xs text-slate-500">Выберите привычку, чтобы начать</p>
+        </div>
+
+        <!-- Circular progress -->
+        <div class="relative w-56 h-56 mx-auto mb-5">
+            <svg viewBox="0 0 200 200" class="w-full h-full -rotate-90">
+                <circle cx="100" cy="100" r="88" fill="none" stroke="#1e293b" stroke-width="12"/>
+                <circle id="progress-ring" cx="100" cy="100" r="88" fill="none" stroke="url(#grad)" stroke-width="12"
+                        stroke-linecap="round" stroke-dasharray="553" stroke-dashoffset="553"
+                        style="transition: stroke-dashoffset 1s linear;"/>
+                <defs>
+                    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#6366f1"/>
+                        <stop offset="100%" stop-color="#a855f7"/>
+                    </linearGradient>
+                    <linearGradient id="grad-done" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#10b981"/>
+                        <stop offset="100%" stop-color="#34d399"/>
+                    </linearGradient>
+                </defs>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span id="timer-display" class="text-4xl font-black text-slate-100 font-mono">00:00</span>
+                <span id="timer-status" class="text-[10px] uppercase tracking-widest text-slate-500 mt-1">Готов</span>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="flex justify-center gap-2">
+            <button type="button" id="start-btn" onclick="startTimer()" disabled class="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-6 py-3 rounded-xl transition shadow-lg shadow-indigo-600/20">
+                <i class="fa-solid fa-play"></i> Старт
+            </button>
+            <button type="button" id="pause-btn" onclick="pauseTimer()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-bold px-6 py-3 rounded-xl transition hidden">
+                <i class="fa-solid fa-pause"></i> Пауза
+            </button>
+            <button type="button" id="resume-btn" onclick="startTimer()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-6 py-3 rounded-xl transition hidden">
+                <i class="fa-solid fa-play"></i> Продолжить
+            </button>
+            <button type="button" id="finish-btn" onclick="finishSession()" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-4 py-3 rounded-xl transition hidden">
+                <i class="fa-solid fa-flag-checkered"></i> Завершить
+            </button>
+        </div>
+
+        {% else %}
+        <p class="text-sm text-slate-400 py-6">
+            У вас пока нет привычек.<br>
+            <a href="{% url 'habits' %}" class="text-indigo-400 underline font-medium">Добавьте привычку</a>, чтобы начать отслеживать время.
+        </p>
+        {% endif %}
+    </div>
+
+    <form id="log-form" action="{% url 'add_time_log' %}" method="POST" class="hidden">
+        {% csrf_token %}
+        <input type="hidden" name="habit_id" id="hidden-habit-id" value="">
+        <input type="hidden" name="duration" id="hidden-duration" value="">
+    </form>
+
+    <!-- Today's log -->
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-base font-bold text-amber-400"><i class="fa-solid fa-stopwatch"></i> Время сегодня</h2>
+            <span class="text-xl font-black text-amber-400">{{ total_time }} <span class="text-xs font-normal text-slate-400">мин</span></span>
+        </div>
+        <div class="space-y-2 border-t border-slate-700/50 pt-3">
+            {% for log in time_logs %}
+            <div class="flex justify-between text-xs text-slate-400">
+                <span class="capitalize">{% if log.habit %}{{ log.habit.title }}{% else %}{{ log.get_category_display }}{% endif %}</span>
+                <span class="font-bold text-slate-200">{{ log.duration_minutes }} мин</span>
+            </div>
+            {% empty %}
+            <p class="text-xs text-slate-500 italic text-center py-2">Сегодня записей нет</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .habit-pill {
+        font-size: 11px; font-weight: 600; padding: 6px 12px; border-radius: 9999px;
+        background: #0f172a; border: 1px solid #334155; color: #94a3b8; transition: all .15s;
+        cursor: pointer;
+    }
+    .habit-pill.active-pill { background: #6366f1; border-color: #6366f1; color: white; }
+    .habit-pill:disabled, .habit-pill.locked { opacity: 0.4; cursor: not-allowed; }
+</style>
+
+<script>
+(function() {
+    // Har bir foydalanuvchi uchun alohida kalit
+    const STORAGE_KEY = 'habitTimerState_v2_{{ request.user.id }}';
+    const DEFAULT_TITLE = document.title;
+
+    const pills = Array.from(document.querySelectorAll('.habit-pill'));
+    const habitsMap = {};
+    pills.forEach(p => {
+        habitsMap[p.dataset.id] = {
+            id: p.dataset.id,
+            title: p.dataset.title,
+            goal: parseInt(p.dataset.goal, 10) || 30,
+            done: parseInt(p.dataset.done, 10) || 0,
+        };
+    });
+
+    const display = document.getElementById('timer-display');
+    if (!display) return; // habit umuman yo'q
+
+    const statusEl = document.getElementById('timer-status');
+    const infoEl = document.getElementById('habit-info');
+    const ring = document.getElementById('progress-ring');
+    const startBtn = document.getElementById('start-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const resumeBtn = document.getElementById('resume-btn');
+    const finishBtn = document.getElementById('finish-btn');
+
+    const CIRC = 2 * Math.PI * 88;
+    ring.style.strokeDasharray = CIRC;
+
+    // ---------- Holat (localStorage) ----------
+    function loadState() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) { return null; }
+    }
+    function saveState(s) {
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (e) {}
+    }
+    function clearState() {
+        try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    }
+
+    let state = loadState();
+
+    // Habit o'chirilgan bo'lsa, eskirgan holatni tozalaymiz
+    if (state && !habitsMap[state.habitId]) {
+        clearState();
+        state = null;
+    }
+
+    let selectedId = state ? state.habitId : null;
+    let tickInterval = null;
+
+    // ---------- Yordamchi funksiyalar ----------
+    function fmt(sec) {
+        sec = Math.max(0, Math.floor(sec));
+        const h = Math.floor(sec / 3600);
+        const m = Math.floor((sec % 3600) / 60);
+        const s = sec % 60;
+        const mm = String(m).padStart(2, '0');
+        const ss = String(s).padStart(2, '0');
+        return h > 0 ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+    }
+
+    function computeElapsed(s) {
+        let elapsed = s.elapsedBeforePause || 0;
+        if (s.running && s.startedAt) {
+            elapsed += (Date.now() - s.startedAt) / 1000;
+        }
+        return elapsed;
+    }
+
+    // XSS'dan himoya: innerHTML o'rniga textContent
+    function renderInfo(title, done, goal) {
+        infoEl.textContent = '';
+        const t = document.createElement('p');
+        t.className = 'text-sm font-semibold text-slate-200';
+        t.textContent = title;
+
+        const d = document.createElement('p');
+        d.className = 'text-xs text-slate-500 mt-0.5';
+        const b = document.createElement('span');
+        b.className = 'text-indigo-400 font-bold';
+        b.textContent = done;
+        d.append('Сегодня: ', b, ` / ${goal} мин`);
+
+        infoEl.append(t, d);
+    }
+
+    function notifyGoal(title) {
+        try {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('Цель достигнута!', { body: title + ' — дневная цель выполнена 🎉' });
+            }
+        } catch (e) {}
+    }
+
+    // ---------- Habit tanlash ----------
+    function selectHabit(id, lockPills) {
+        selectedId = id;
+        pills.forEach(p => p.classList.toggle('active-pill', p.dataset.id === id));
+        const h = habitsMap[id];
+        if (h) renderInfo(h.title, h.done, h.goal);
+        startBtn.disabled = false;
+        pills.forEach(p => p.classList.toggle('locked', !!lockPills && p.dataset.id !== id));
+    }
+
+    pills.forEach(p => {
+        p.addEventListener('click', () => {
+            // Sessiya (ishlayotgan yoki pauzadagi) bo'lsa, boshqa habit tanlab bo'lmaydi
+            if (loadState()) return;
+            selectHabit(p.dataset.id, false);
+        });
+    });
+
+    // ---------- UI yangilash ----------
+    function updateUI(s) {
+        const h = habitsMap[s.habitId] || { goal: 30, done: 0, title: '' };
+        const elapsed = computeElapsed(s);
+        display.textContent = fmt(elapsed);
+
+        const totalTodaySec = (h.done * 60) + elapsed;
+        const progress = Math.min(totalTodaySec / (h.goal * 60), 1);
+        ring.style.strokeDashoffset = CIRC * (1 - progress);
+        ring.setAttribute('stroke', progress >= 1 ? 'url(#grad-done)' : 'url(#grad)');
+
+        renderInfo(h.title, Math.floor(totalTodaySec / 60), h.goal);
+
+        if (s.running) {
+            statusEl.textContent = 'В процессе';
+            startBtn.classList.add('hidden');
+            resumeBtn.classList.add('hidden');
+            pauseBtn.classList.remove('hidden');
+            finishBtn.classList.remove('hidden');
+            document.title = `${fmt(elapsed)} · ${h.title}`;
+        } else if (elapsed > 0) {
+            statusEl.textContent = 'На паузе';
+            startBtn.classList.add('hidden');
+            pauseBtn.classList.add('hidden');
+            resumeBtn.classList.remove('hidden');
+            finishBtn.classList.remove('hidden');
+            document.title = `⏸ ${fmt(elapsed)} · ${h.title}`;
+        } else {
+            statusEl.textContent = 'Готов';
+            startBtn.classList.remove('hidden');
+            pauseBtn.classList.add('hidden');
+            resumeBtn.classList.add('hidden');
+            finishBtn.classList.add('hidden');
+            document.title = DEFAULT_TITLE;
+        }
+    }
+
+    function tick() {
+        const s = loadState();
+        if (!s || !s.running) {
+            clearInterval(tickInterval);
+            tickInterval = null;
+            return;
+        }
+        updateUI(s);
+
+        // Maqsadga yetganda bir marta bildirishnoma
+        const h = habitsMap[s.habitId];
+        if (h && !s.notified && (h.done * 60 + computeElapsed(s)) >= h.goal * 60) {
+            s.notified = true;
+            saveState(s);
+            notifyGoal(h.title);
+        }
+    }
+
+    // ---------- Boshqaruv ----------
+    window.startTimer = function() {
+        if (!selectedId) return;
+
+        // Bildirishnoma ruxsatini foydalanuvchi bosgan paytda so'raymiz
+        try {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        } catch (e) {}
+
+        let s = loadState();
+
+        if (!s || s.habitId !== selectedId) {
+            s = { habitId: selectedId, running: true, startedAt: Date.now(), elapsedBeforePause: 0, notified: false };
+        } else {
+            s.running = true;
+            s.startedAt = Date.now();
+        }
+
+        saveState(s);
+        selectHabit(selectedId, true);
+        updateUI(s);
+        if (!tickInterval) tickInterval = setInterval(tick, 1000);
+    };
+
+    window.pauseTimer = function() {
+        const s = loadState();
+        if (!s || !s.running) return;
+        s.elapsedBeforePause = (s.elapsedBeforePause || 0) + (Date.now() - s.startedAt) / 1000;
+        s.running = false;
+        s.startedAt = null;
+        saveState(s);
+        updateUI(s);
+        if (tickInterval) { clearInterval(tickInterval); tickInterval = null; }
+    };
+
+    window.finishSession = function() {
+        const s = loadState();
+        if (!s) return;
+        const elapsed = computeElapsed(s);
+
+        // 1 daqiqadan kam bo'lsa, statistikani buzmaslik uchun saqlamaymiz
+        if (elapsed < 60) {
+            if (!confirm('Меньше 1 минуты. Завершить без сохранения?')) return;
+            if (tickInterval) { clearInterval(tickInterval); tickInterval = null; }
+            clearState();
+            document.title = DEFAULT_TITLE;
+            location.reload();
+            return;
+        }
+
+        const minutes = Math.round(elapsed / 60);
+
+        if (tickInterval) { clearInterval(tickInterval); tickInterval = null; }
+        clearState();
+        document.title = DEFAULT_TITLE;
+
+        document.getElementById('hidden-habit-id').value = s.habitId;
+        document.getElementById('hidden-duration').value = minutes;
+        document.getElementById('log-form').submit();
+    };
+
+    // ---------- Sahifa yuklanganda holatni tiklash ----------
+    // Hisob timestamp asosida bo'lgani uchun, sahifadan chiqib qaytganda ham vaqt to'g'ri.
+    if (state) {
+        selectHabit(state.habitId, true); // sessiya bor: pill'lar doim qulflangan
+        updateUI(state);
+        if (state.running) tickInterval = setInterval(tick, 1000);
+    } else if (pills.length > 0) {
+        selectHabit(pills[0].dataset.id, false);
+    }
+})();
+</script>
+{% endblock %}

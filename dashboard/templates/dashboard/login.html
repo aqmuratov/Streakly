@@ -1,0 +1,44 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="max-w-md mx-auto bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl my-10">
+    <h2 class="text-xl font-bold text-center text-indigo-400 mb-6">Вход в систему</h2>
+    
+    <form method="POST" class="space-y-4">
+        {% csrf_token %}
+        {% for field in form %}
+        <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+                <p class="text-xs text-rose-400 mt-1">{{ field.errors.0 }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+        
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold py-2.5 rounded-xl transition mt-4">
+            Войти
+        </button>
+    </form>
+    
+    <p class="text-xs text-slate-400 text-center mt-4">
+        Нет аккаунта? <a href="{% url 'register' %}" class="text-indigo-400 font-semibold hover:underline">Зарегистрироваться</a>
+    </p>
+</div>
+
+<style>
+    input {
+        width: 100%;
+        background-color: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 0.75rem;
+        padding: 0.625rem 1rem;
+        color: #f8fafc;
+        font-size: 0.875rem;
+        outline: none;
+    }
+    input:focus {
+        border-color: #818cf8;
+    }
+</style>
+{% endblock %}

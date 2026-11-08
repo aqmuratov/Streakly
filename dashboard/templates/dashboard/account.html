@@ -1,0 +1,267 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<div class="space-y-6 max-w-xl mx-auto pb-16">
+
+    <!-- Profil Card -->
+    <div class="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow-xl relative overflow-hidden text-center">
+        <!-- Avatar (Bosh sahifadagi avatar) -->
+        <div class="w-24 h-24 mx-auto rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 p-1 mb-3 overflow-hidden shadow-lg">
+            {% if profile.avatar %}
+                <img src="{{ profile.avatar.url }}" alt="Avatar" class="w-full h-full object-cover rounded-full">
+            {% else %}
+                <div class="w-full h-full bg-slate-900 rounded-full flex items-center justify-center text-indigo-400 text-3xl font-bold">
+                    {% if request.user.first_name %}
+                        {{ request.user.first_name|slice:":1"|upper }}
+                    {% else %}
+                        {{ request.user.username|slice:":1"|upper }}
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Name & Username -->
+        <h2 class="text-xl font-bold text-slate-100 flex items-center justify-center gap-1.5">
+            {% if request.user.get_full_name %}
+                {{ request.user.get_full_name }}
+            {% else %}
+                {{ request.user.username }}
+            {% endif %}
+            <i class="fa-solid fa-circle-check text-indigo-400 text-sm"></i>
+        </h2>
+        <p class="text-xs text-slate-400 mt-0.5">@{{ request.user.username }}</p>
+
+        <!-- BIO -->
+        {% if profile.bio %}
+            <p class="text-sm text-slate-200 mt-3 max-w-sm mx-auto leading-relaxed bg-slate-900/50 py-2.5 px-4 rounded-xl border border-slate-700/50">
+                {{ profile.bio }}
+            </p>
+        {% else %}
+            <p class="text-xs text-slate-500 italic mt-3">
+                Bio kiritilmagan
+            </p>
+        {% endif %}
+
+        <!-- SOCIAL LINKS (Telegram / GitHub) -->
+        <div class="flex justify-center gap-4 mt-4">
+            {% if profile.github_link %}
+            <a href="{{ profile.github_link }}" target="_blank" class="text-slate-400 hover:text-white text-xl transition">
+                <i class="fa-brands fa-github"></i>
+            </a>
+            {% endif %}
+            
+            {% if profile.telegram_link %}
+            <a href="{{ profile.telegram_link }}" target="_blank" class="text-slate-400 hover:text-sky-400 text-xl transition">
+                <i class="fa-brands fa-telegram"></i>
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="grid grid-cols-2 gap-3 mt-6">
+            <button type="button" onclick="openModal('editProfileModal')" class="bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-semibold py-2.5 rounded-xl transition border border-slate-600">
+                Редактировать
+            </button>
+            <button type="button" onclick="openModal('securityModal')" class="bg-slate-700 hover:bg-slate-600 text-slate-100 text-xs font-semibold py-2.5 rounded-xl transition border border-slate-600">
+                Безопасность
+            </button>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="mt-6 pt-4 border-t border-slate-700/60 text-left">
+            <div class="flex justify-between items-center text-xs font-semibold mb-1">
+                <span class="text-indigo-400">⚡ Level {{ profile.level }}</span>
+                <span class="text-slate-400">{{ profile.xp_progress }} / 100 XP</span>
+            </div>
+            <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
+                <div class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: {{ profile.xp_progress }}%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Counters -->
+    <div class="grid grid-cols-3 gap-3 text-center">
+        <div class="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl">
+            <span class="text-xs text-slate-400 block mb-1">Всего XP</span>
+            <span class="text-lg font-bold text-yellow-400">⚡ {{ profile.total_xp }}</span>
+        </div>
+        <div class="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl">
+            <span class="text-xs text-slate-400 block mb-1">Привычки</span>
+            <span class="text-lg font-bold text-indigo-400">{{ total_habits }}</span>
+        </div>
+        <div class="bg-slate-800/80 border border-slate-700 p-4 rounded-2xl">
+            <span class="text-xs text-slate-400 block mb-1">Задачи</span>
+            <span class="text-lg font-bold text-emerald-400">{{ completed_tasks }}</span>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL 1: Edit Profile -->
+<div id="editProfileModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-md w-full p-6 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="text-base font-bold text-slate-100">Редактировать профиль</h3>
+            <button type="button" onclick="closeModal('editProfileModal')" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" class="space-y-4">
+            {% csrf_token %}
+
+            <!-- TELEGRAM / INSTAGRAM STYLE AVATAR UPLOADER -->
+            <div class="flex flex-col items-center justify-center mb-4">
+                <div class="relative group cursor-pointer" onclick="document.getElementById('avatarInput').click();">
+                    
+                    <!-- Avatar ko'rinishi -->
+                    <div class="w-24 h-24 rounded-full overflow-hidden border-2 border-indigo-500/50 group-hover:border-indigo-500 transition shadow-lg flex items-center justify-center bg-slate-900">
+                        {% if profile.avatar %}
+                            <img id="avatarPreview" src="{{ profile.avatar.url }}" alt="Avatar" class="w-full h-full object-cover">
+                        {% else %}
+                            <img id="avatarPreview" src="" alt="Avatar" class="w-full h-full object-cover hidden">
+                            <div id="avatarInitials" class="text-indigo-400 text-3xl font-bold">
+                                {% if request.user.first_name %}
+                                    {{ request.user.first_name|slice:":1"|upper }}
+                                {% else %}
+                                    {{ request.user.username|slice:":1"|upper }}
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Ustiga kelganda (Hover) Kamera ikonkasi chiqadi -->
+                    <div class="absolute inset-0 bg-slate-950/60 rounded-full flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition duration-200">
+                        <i class="fa-solid fa-camera text-white text-xl mb-0.5"></i>
+                        <span class="text-[10px] text-slate-200 font-medium">Изменить</span>
+                    </div>
+
+                    <!-- Kichik kamera ikonkasi (Pastki burchakda) -->
+                    <div class="absolute bottom-0 right-0 bg-indigo-600 text-white p-1.5 rounded-full shadow-md border-2 border-slate-800 text-xs">
+                        <i class="fa-solid fa-pen"></i>
+                    </div>
+                </div>
+
+                <!-- Yashirin (hidden) file input -->
+                <input type="file" id="avatarInput" name="avatar" accept="image/*" class="hidden" onchange="previewSelectedImage(this)">
+                
+                <span class="text-[11px] text-slate-400 mt-2">Нажмите на фото, чтобы изменить</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Имя</label>
+                    <input type="text" name="first_name" value="{{ request.user.first_name }}" placeholder="Имя"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 mb-1">Фамилия</label>
+                    <input type="text" name="last_name" value="{{ request.user.last_name }}" placeholder="Фамилия"
+                           class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Email</label>
+                <input type="email" name="email" value="{{ request.user.email }}" placeholder="example@gmail.com"
+                       class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">О себе (Bio)</label>
+                <textarea name="bio" rows="3" placeholder="Расскажите немного о себе..."
+                          class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500 resize-none">{% if profile.bio %}{{ profile.bio }}{% endif %}</textarea>
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">GitHub Link</label>
+                <input type="text" name="github_link" value="{% if profile.github_link %}{{ profile.github_link }}{% endif %}" placeholder="https://github.com/username"
+                       class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Telegram (Ssilka yoki @username)</label>
+                <input type="text" name="telegram_link" value="{% if profile.telegram_link %}{{ profile.telegram_link }}{% endif %}" placeholder="@username yoki https://t.me/username"
+                       class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-indigo-500">
+            </div>
+
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 rounded-xl transition mt-2">
+                Сохранить
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL 2: Security -->
+<div id="securityModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-800 border border-slate-700 rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="text-base font-bold text-slate-100">Смена пароля</h3>
+            <button type="button" onclick="closeModal('securityModal')" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+        </div>
+
+        <form method="POST" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="change_password" value="1">
+
+            {% for field in password_form %}
+            <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                    <p class="text-xs text-rose-400 mt-1">{{ field.errors.0 }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 rounded-xl transition mt-2">
+                Изменить пароль
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openModal(id) {
+        document.getElementById(id).classList.remove('hidden');
+    }
+    function closeModal(id) {
+        document.getElementById(id).classList.add('hidden');
+    }
+
+    // Yangi tanlangan rasmni darhol preview qilish uchun funksiya
+    function previewSelectedImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                const imgElement = document.getElementById('avatarPreview');
+                const initialsElement = document.getElementById('avatarInitials');
+                
+                imgElement.src = e.target.result;
+                imgElement.classList.remove('hidden');
+                
+                if (initialsElement) {
+                    initialsElement.classList.add('hidden');
+                }
+            }
+            
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+</script>
+
+<style>
+    #securityModal input[type="password"] {
+        width: 100%;
+        background-color: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 0.75rem;
+        padding: 0.625rem 1rem;
+        color: #f8fafc;
+        font-size: 0.875rem;
+        outline: none;
+    }
+    #securityModal input[type="password"]:focus {
+        border-color: #818cf8;
+    }
+</style>
+{% endblock %}

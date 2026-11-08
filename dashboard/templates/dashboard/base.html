@@ -4,7 +4,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Streakly</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -69,31 +69,44 @@ if ('serviceWorker' in navigator) {
     </div>
 
     <!-- Bottom Navigation Bar -->
-    <div class="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-md border-t border-slate-700 px-4 py-3 z-50 flex justify-around items-center shadow-2xl">
-        <a href="{% url 'challenges' %}" class="flex flex-col items-center transition {% if request.resolver_match.url_name == 'habits' %}text-indigo-400 font-bold{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
-    <i class="fa-solid fa-flag-checkered text-xl mb-1"></i>
-    <span class="text-xs font-medium">Челленджи</span>
-</a>
-        <a href="{% url 'habits' %}" class="flex flex-col items-center transition {% if request.resolver_match.url_name == 'habits' %}text-indigo-400 font-bold{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
-            <i class="fa-solid fa-calendar-check text-xl mb-1"></i>
-            <span class="text-xs font-medium">Привычки</span>
+    {% with current=request.resolver_match.url_name %}
+<nav class="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-md border-t border-slate-700 z-50 shadow-2xl"
+     style="padding-bottom: env(safe-area-inset-bottom);">
+    <div class="flex items-stretch max-w-2xl mx-auto px-2 py-1.5 gap-1">
+
+        <a href="{% url 'challenges' %}"
+           class="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition {% if current == 'challenges' or current == 'new_challenge' %}text-indigo-400 bg-indigo-500/10{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
+            <i class="fa-solid fa-flag-checkered text-lg"></i>
+            <span class="text-[10px] font-semibold leading-tight truncate">Челленджи</span>
         </a>
-        <a href="{% url 'tasks' %}" class="flex flex-col items-center transition {% if request.resolver_match.url_name == 'tasks' %}text-indigo-400 font-bold{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
-            <i class="fa-solid fa-list-check text-xl mb-1"></i>
-            <span class="text-xs font-medium">Задачи</span>
+
+        <a href="{% url 'habits' %}"
+           class="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition {% if current == 'habits' %}text-indigo-400 bg-indigo-500/10{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
+            <i class="fa-solid fa-calendar-check text-lg"></i>
+            <span class="text-[10px] font-semibold leading-tight truncate">Привычки</span>
         </a>
-        <a href="{% url 'timer' %}" class="flex flex-col items-center transition {% if request.resolver_match.url_name == 'timer' %}text-indigo-400 font-bold{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
-            <i class="fa-solid fa-clock text-xl mb-1"></i>
-            <span class="text-xs font-medium">Таймер</span>
+
+        <a href="{% url 'timer' %}"
+           class="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition {% if current == 'timer' %}text-indigo-400 bg-indigo-500/10{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
+            <i class="fa-solid fa-clock text-lg"></i>
+            <span class="text-[10px] font-semibold leading-tight truncate">Таймер</span>
         </a>
-        <a href="{% url 'stats' %}" class="flex flex-col items-center transition {% if request.resolver_match.url_name == 'account' %}text-indigo-400 font-bold{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
-    <i class="fa-solid fa-chart-column text-xl mb-1"></i> Статистика
-</a>
-        <a href="{% url 'account' %}" class="flex flex-col items-center transition {% if request.resolver_match.url_name == 'account' %}text-indigo-400 font-bold{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
-            <i class="fa-solid fa-user text-xl mb-1"></i>
-            <span class="text-xs font-medium">Профиль</span>
+
+        <a href="{% url 'stats' %}"
+           class="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition {% if current == 'stats' %}text-indigo-400 bg-indigo-500/10{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
+            <i class="fa-solid fa-chart-column text-lg"></i>
+            <span class="text-[10px] font-semibold leading-tight truncate">Статистика</span>
         </a>
+
+        <a href="{% url 'account' %}"
+           class="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition {% if current == 'account' %}text-indigo-400 bg-indigo-500/10{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
+            <i class="fa-solid fa-user text-lg"></i>
+            <span class="text-[10px] font-semibold leading-tight truncate">Профиль</span>
+        </a>
+
     </div>
+</nav>
+{% endwith %}
 
 </body>
 </html>

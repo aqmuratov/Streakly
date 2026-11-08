@@ -26,7 +26,7 @@ urlpatterns = [
     path('challenges/<int:challenge_id>/delete/', views.delete_challenge, name='delete_challenge'), 
     path('challenges/new/', views.new_challenge_view, name='new_challenge'),    
     path('stats/', views.stats_view, name='stats'),
-    
+    path('sw.js', views.service_worker, name='sw'),
 ]
 
 

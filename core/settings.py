@@ -129,8 +129,8 @@ import os
 DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', SECRET_KEY)
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'USERNAME.pythonanywhere.com']
-CSRF_TRUSTED_ORIGINS = ['https://aqmuratov  .pythonanywhere.com']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'streakly.pythonanywhere.com']
+CSRF_TRUSTED_ORIGINS = ['https://streakly.pythonanywhere.com']
 
 TIME_ZONE = 'Asia/Tashkent'
 USE_TZ = True
@@ -141,3 +141,4 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+

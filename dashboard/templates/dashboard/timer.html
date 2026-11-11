@@ -4,7 +4,9 @@
 {% if messages %}
 <div class="max-w-md mx-auto mb-4 space-y-2">
     {% for message in messages %}
-    <div class="bg-slate-800 border border-indigo-500/40 text-slate-200 text-xs font-medium rounded-xl px-4 py-3 shadow-lg">{{ message }}</div>
+    <div class="bg-slate-800 border border-slate-700 text-slate-200 text-sm font-medium rounded-xl px-4 py-3 shadow-lg flex items-center gap-2">
+        <i class="fa-solid {% if message.tags == 'error' %}fa-circle-exclamation text-rose-400{% else %}fa-circle-check text-emerald-400{% endif %}"></i> {{ message }}
+    </div>
     {% endfor %}
 </div>
 {% endif %}
@@ -211,7 +213,7 @@
     function notifyGoal(title) {
         try {
             if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('Цель достигнута!', { body: title + ' — дневная цель выполнена 🎉' });
+                new Notification('Цель достигнута!', { body: title + ' — дневная цель выполнена' });
             }
         } catch (e) {}
     }

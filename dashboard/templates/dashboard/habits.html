@@ -31,7 +31,7 @@
             <p id="summary-text" class="text-xs text-slate-500 mt-2">Сегодня ещё ничего не выполнено</p>
 
             <div id="all-done-banner" class="hidden mt-4 text-center bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-xl py-2.5">
-                🎉 Все привычки на сегодня выполнены! Отличная работа!
+                <i class="fa-solid fa-circle-check"></i> Все привычки на сегодня выполнены. Отличная работа!
             </div>
         </div>
     </div>
@@ -82,7 +82,7 @@
             <select id="sort-select"
                     class="bg-slate-900 border border-slate-700 text-xs rounded-xl px-2.5 py-2 text-slate-300 focus:outline-none focus:border-indigo-500">
                 <option value="default">По умолчанию</option>
-                <option value="streak">По серии 🔥</option>
+                <option value="streak">По серии</option>
                 <option value="goal">По цели</option>
                 <option value="name">По имени</option>
             </select>
@@ -102,7 +102,7 @@
                     <div class="flex items-center flex-wrap gap-2">
                         <span class="font-medium text-slate-200 truncate">{{ habit.title }}</span>
                         <span class="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/20 px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
-                            🔥 {{ habit.streak|default:0 }} д
+                            <i class="fa-solid fa-fire"></i> {{ habit.streak|default:0 }} д
                         </span>
                     </div>
                     <span class="text-xs text-slate-500 flex items-center gap-1">
@@ -116,7 +116,7 @@
                 <div class="flex items-center gap-2 shrink-0">
                     {% if habit.id in today_completed_habits %}
                     <span class="bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 text-xs font-bold px-3 py-1.5 rounded-lg whitespace-nowrap">
-                        <i class="fa-solid fa-check"></i> Выполнено (+10 XP)
+                        <i class="fa-solid fa-check"></i> Выполнено <span class="xp-pill">+10 XP</span>
                     </span>
                     {% else %}
                     <span class="bg-slate-800 border border-slate-700 text-xs font-medium text-slate-400 px-3 py-1.5 rounded-lg whitespace-nowrap" title="Привычка засчитывается только после таймера">
@@ -145,7 +145,7 @@
             </div>
             {% empty %}
             <div class="text-center py-10">
-                <div class="text-4xl mb-2">🌱</div>
+                <div class="empty-icon"><i class="fa-solid fa-seedling"></i></div>
                 <p class="text-slate-400 text-sm font-medium">Список привычек пуст</p>
                 <p class="text-slate-500 text-xs mt-1">Добавьте первую привычку выше и начните серию.</p>
             </div>

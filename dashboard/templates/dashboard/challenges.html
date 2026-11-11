@@ -23,7 +23,7 @@
                 <div class="flex items-center flex-wrap gap-2">
                     <h3 class="font-bold text-slate-100 truncate">{{ c.title }}</h3>
                     {% if c.status == 'success' %}
-                    <span class="text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full">Выполнен 🏆</span>
+                    <span class="text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full"><i class="fa-solid fa-trophy"></i> Выполнен</span>
                     {% elif c.status == 'finished' %}
                     <span class="text-[10px] font-bold uppercase bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full">Завершён</span>
                     {% else %}
@@ -92,7 +92,7 @@
     </div>
     {% empty %}
     <div class="bg-slate-800 border border-slate-700 rounded-2xl p-8 text-center shadow-xl">
-        <div class="text-4xl mb-2">🏁</div>
+        <div class="empty-icon"><i class="fa-solid fa-flag-checkered"></i></div>
         <p class="text-slate-400 text-sm font-medium">Пока нет челленджей</p>
         <p class="text-slate-500 text-xs mt-1">Нажмите «+» справа внизу и начните серию.</p>
     </div>

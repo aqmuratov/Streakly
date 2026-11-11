@@ -1,112 +1,145 @@
-{% load static %}
-
-<!DOCTYPE html>
+{% load static %}<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Streakly</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="icon" type="image/svg+xml" href="{% static 'icon.svg' %}">
-    <link rel="manifest" href="{% static 'manifest.json' %}">
-<meta name="theme-color" content="#0f172a">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Streakly">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="{% static 'apple-touch-icon.png' %}">
-</head>
-<script>
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' });
-    });
-}
-</script>
-<body class="bg-slate-900 text-slate-100 font-sans antialiased min-h-screen pb-24">
-    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-    <!-- Top Navigation -->
-    <nav class="bg-slate-800 border-b border-slate-700 px-6 py-4 flex justify-between items-center sticky top-0 z-40 shadow-lg">
-        <!-- Logotip -->
-        <a href="{% url 'habits' %}" class="flex items-center space-x-3">
-            <img src="{% static 'icon.svg' %}" alt="" class="w-8 h-8">
-            <span class="text-xl font-bold tracking-wide">Streakly<span class="text-indigo-500"></span></span>
+    <link rel="icon" type="image/svg+xml" href="{% static 'apple-touch-icon (1).png' %}?v=3">
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Streakly">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="apple-touch-icon" href="{% static 'apple-touch-icon (1).png' %}">
+
+    <!-- Light theme: must come after Tailwind -->
+    <link rel="stylesheet" href="{% static 'streakly.css' %}?v=3">
+</head>
+<body class="min-h-screen antialiased">
+
+{% if user.is_authenticated %}
+    <!-- Top bar -->
+    <header class="topbar">
+        <a href="{% url 'habits' %}" class="brand">
+            <img src="{% static 'icon-512 (1).png' %}?v=3" alt="">
+            <span>Streak<b>ly</b></span>
         </a>
 
-        <!-- O'ng tarafdagi foydalanuvchi ma'lumotlari va tugmalar -->
-        {% if request.user.is_authenticated %}
-        <div class="flex items-center space-x-4">
-            <!-- Level va XP -->
-            <div class="bg-slate-700/50 px-3 py-1.5 rounded-full border border-slate-600 flex items-center space-x-2 text-xs sm:text-sm">
-                Lvl {{ user.profile.level }}
-<span>⚡ {{ user.profile.total_xp }} XP</span>
-            </div>
+        <div class="userbox">
+            <a href="{% url 'account' %}" class="xp-badge" title="Уровень {{ user.profile.level|default:1 }} · {{ user.profile.total_xp|default:0 }} XP">
+                <span class="xp-ring">
+                    <svg viewBox="0 0 36 36" aria-hidden="true">
+                        <circle class="track" cx="18" cy="18" r="15" pathLength="100"/>
+                        <circle class="fill" cx="18" cy="18" r="15" pathLength="100" stroke-dasharray="{{ user.profile.xp_progress|default:0 }} 100"/>
+                    </svg>
+                    <i class="fa-solid fa-bolt"></i>
+                </span>
+                <span class="xp-text">
+                    <strong>Уровень {{ user.profile.level|default:1 }}</strong>
+                    <small>{{ user.profile.total_xp|default:0 }} XP</small>
+                </span>
+            </a>
 
-            <!-- Foydalanuvchi nomi -->
-            <span class="text-slate-300 text-sm font-medium hidden sm:inline-block">
-                👤 {{ request.user.username }}
-            </span>
+            <a href="{% url 'account' %}" class="avatar" title="Профиль">
+                {% if user.profile.avatar %}
+                    <img src="{{ user.profile.avatar.url }}" alt="">
+                {% else %}
+                    <i class="fa-solid fa-user"></i>
+                {% endif %}
+            </a>
+            <span class="uname">{{ user.username }}</span>
 
-            <!-- Chiqish (Logout) -->
-            <a href="{% url 'logout' %}" class="text-xs bg-slate-700 hover:bg-rose-600/20 hover:text-rose-400 text-slate-300 border border-slate-600 px-3 py-1.5 rounded-lg transition font-medium">
-                Выйти
+            {% url 'logout' as logout_url %}
+            {% if logout_url %}
+            <a href="{{ logout_url }}" class="logout" title="Выйти"><i class="fa-solid fa-right-from-bracket"></i></a>
+            {% endif %}
+        </div>
+    </header>
+{% endif %}
+
+    <main class="px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+{% if user.is_authenticated %}
+    {% with current=request.resolver_match.url_name %}
+    <nav class="bottom-nav">
+        <div class="inner">
+            <a href="{% url 'challenges' %}" class="bn-item {% if current == 'challenges' or current == 'new_challenge' %}active{% endif %}">
+                <i class="fa-solid fa-flag-checkered"></i><span>Челленджи</span>
+            </a>
+            <a href="{% url 'habits' %}" class="bn-item {% if current == 'habits' %}active{% endif %}">
+                <i class="fa-solid fa-calendar-check"></i><span>Привычки</span>
+            </a>
+            <a href="{% url 'timer' %}" class="bn-item {% if current == 'timer' %}active{% endif %}">
+                <i class="fa-solid fa-clock"></i><span>Таймер</span>
+            </a>
+            <a href="{% url 'stats' %}" class="bn-item {% if current == 'stats' %}active{% endif %}">
+                <i class="fa-solid fa-chart-column"></i><span>Статистика</span>
+            </a>
+            <a href="{% url 'account' %}" class="bn-item {% if current == 'account' %}active{% endif %}">
+                <i class="fa-solid fa-user"></i><span>Профиль</span>
             </a>
         </div>
-        {% else %}
-        <!-- Login qilmagan bo'lsa kirish tugmalari -->
-        <div class="flex items-center space-x-3 text-xs font-medium">
-            <a href="{% url 'login' %}" class="text-slate-300 hover:text-white transition">Войти</a>
-            <a href="{% url 'register' %}" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition">Регистрация</a>
-        </div>
-        {% endif %}
     </nav>
+    {% endwith %}
+{% endif %}
 
-    <!-- Main Content Area -->
-    <div class="max-w-3xl mx-auto px-4 py-6">
-        {% block content %}{% endblock %}
-    </div>
+    <script>
+    /* Replace plain emoji with clean Font Awesome icons (covers every page). */
+    (function () {
+        var MAP = {
+            '⚡': 'fa-bolt', '🔥': 'fa-fire', '🏆': 'fa-trophy', '🎉': 'fa-star', '🌱': 'fa-seedling',
+            '🏁': 'fa-flag-checkered', '🚀': 'fa-rocket', '✅': 'fa-circle-check', '⏱': 'fa-stopwatch',
+            '📊': 'fa-chart-column', '🎯': 'fa-bullseye', '⭐': 'fa-star', '💪': 'fa-dumbbell',
+            '📚': 'fa-book', '👑': 'fa-crown', '🧠': 'fa-brain', '💻': 'fa-laptop-code',
+            '📈': 'fa-arrow-trend-up', '✨': 'fa-wand-magic-sparkles', '🎓': 'fa-graduation-cap',
+            '📅': 'fa-calendar-check', '⏰': 'fa-clock', '🥇': 'fa-medal', '🥈': 'fa-medal', '🥉': 'fa-medal'
+        };
+        var COLOR = { '🥇': '#b8860b', '🥈': '#8e8e93', '🥉': '#a0522d' };
+        var keys = Object.keys(MAP).join('|');
+        var rx = new RegExp('(' + keys + ')\\uFE0F?', 'g');
+        var skip = { SCRIPT: 1, STYLE: 1, TEXTAREA: 1, OPTION: 1, TITLE: 1, INPUT: 1 };
 
-    <!-- Bottom Navigation Bar -->
-    {% with current=request.resolver_match.url_name %}
-<nav class="fixed bottom-0 left-0 right-0 bg-slate-800/95 backdrop-blur-md border-t border-slate-700 z-50 shadow-2xl"
-     style="padding-bottom: env(safe-area-inset-bottom);">
-    <div class="flex items-stretch max-w-2xl mx-auto px-2 py-1.5 gap-1">
+        var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+        var nodes = [], n;
+        while ((n = walker.nextNode())) {
+            if (n.parentNode && !skip[n.parentNode.nodeName] && rx.test(n.nodeValue)) nodes.push(n);
+            rx.lastIndex = 0;
+        }
+        nodes.forEach(function (node) {
+            var text = node.nodeValue, frag = document.createDocumentFragment(), last = 0, m;
+            rx.lastIndex = 0;
+            while ((m = rx.exec(text))) {
+                frag.appendChild(document.createTextNode(text.slice(last, m.index)));
+                var i = document.createElement('i');
+                i.className = 'fa-solid ' + MAP[m[1]];
+                i.setAttribute('aria-hidden', 'true');
+                i.style.margin = '0 .15em';
+                if (COLOR[m[1]]) i.style.color = COLOR[m[1]];
+                frag.appendChild(i);
+                last = m.index + m[0].length;
+            }
+            frag.appendChild(document.createTextNode(text.slice(last)));
+            node.parentNode.replaceChild(frag, node);
+        });
+    })();
+    </script>
 
-        <a href="{% url 'challenges' %}"
-           class="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition {% if current == 'challenges' or current == 'new_challenge' %}text-indigo-400 bg-indigo-500/10{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
-            <i class="fa-solid fa-flag-checkered text-lg"></i>
-            <span class="text-[10px] font-semibold leading-tight truncate">Челленджи</span>
-        </a>
-
-        <a href="{% url 'habits' %}"
-           class="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition {% if current == 'habits' %}text-indigo-400 bg-indigo-500/10{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
-            <i class="fa-solid fa-calendar-check text-lg"></i>
-            <span class="text-[10px] font-semibold leading-tight truncate">Привычки</span>
-        </a>
-
-        <a href="{% url 'timer' %}"
-           class="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition {% if current == 'timer' %}text-indigo-400 bg-indigo-500/10{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
-            <i class="fa-solid fa-clock text-lg"></i>
-            <span class="text-[10px] font-semibold leading-tight truncate">Таймер</span>
-        </a>
-
-        <a href="{% url 'stats' %}"
-           class="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition {% if current == 'stats' %}text-indigo-400 bg-indigo-500/10{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
-            <i class="fa-solid fa-chart-column text-lg"></i>
-            <span class="text-[10px] font-semibold leading-tight truncate">Статистика</span>
-        </a>
-
-        <a href="{% url 'account' %}"
-           class="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition {% if current == 'account' %}text-indigo-400 bg-indigo-500/10{% else %}text-slate-400 hover:text-indigo-300{% endif %}">
-            <i class="fa-solid fa-user text-lg"></i>
-            <span class="text-[10px] font-semibold leading-tight truncate">Профиль</span>
-        </a>
-
-    </div>
-</nav>
-{% endwith %}
-
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        });
+    }
+    </script>
 </body>
 </html>

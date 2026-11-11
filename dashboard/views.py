@@ -1,6 +1,6 @@
 import calendar
 from datetime import date, timedelta
-
+from django.http import HttpResponse
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -10,7 +10,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from django.http import HttpResponse
 from .models import Challenge, Habit, HabitLog, Task, TimeLog, UserProfile
 from .services import apply_live_streaks, award_if_goal_reached
 
@@ -324,7 +323,7 @@ def add_time_log(request):
                 if result['awarded']:
                     messages.success(
                         request,
-                        f"🎉 Цель «{habit.title}» выполнена! +{result['xp']} XP"
+                        f"Цель «{habit.title}» выполнена · +{result['xp']} XP"
                     )
     return redirect('timer')
 
@@ -525,7 +524,6 @@ def stats_view(request):
         'next_y': next_y, 'next_m': next_m, 'has_next': has_next,
     })
 
-
 def service_worker(request):
     js = """
 self.addEventListener('install', e => self.skipWaiting());
@@ -535,4 +533,4 @@ self.addEventListener('fetch', e => {});
     resp = HttpResponse(js, content_type='application/javascript')
     resp['Service-Worker-Allowed'] = '/'
     resp['Cache-Control'] = 'no-cache'
-    return resp
+    return resp 

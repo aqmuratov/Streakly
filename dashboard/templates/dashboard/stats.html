@@ -145,7 +145,7 @@
             datasets: [{
                 label: 'Минуты',
                 data: data.values,
-                backgroundColor: data.values.map(v => v > 0 ? '#6366f1' : '#1e293b'),
+                backgroundColor: data.values.map(v => v > 0 ? '#1d1d1f' : '#ececf0'),
                 borderRadius: 4,
                 maxBarThickness: 16,
             }]
@@ -155,8 +155,8 @@
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
-                x: { ticks: { color: '#64748b', font: { size: 10 }, maxTicksLimit: 16 }, grid: { display: false } },
-                y: { beginAtZero: true, ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: '#1e293b' } }
+                x: { ticks: { color: '#86868b', font: { size: 10 }, maxTicksLimit: 16 }, grid: { display: false } },
+                y: { beginAtZero: true, ticks: { color: '#86868b', font: { size: 10 } }, grid: { color: '#f0f0f2' } }
             }
         }
     });

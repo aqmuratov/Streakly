@@ -1,17 +1,20 @@
 import calendar
-from datetime import date, timedelta
-from django.http import HttpResponse
+import json
+from datetime import date, datetime, time as dtime, timedelta
+
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import AuthenticationForm, PasswordChangeForm, UserCreationForm
 from django.db.models import Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .models import Challenge, Habit, HabitLog, Task, TimeLog, UserProfile
-from .services import apply_live_streaks, award_if_goal_reached
+from .models import Challenge, Habit, HabitLog, RoutineItem, Task, TimeLog, UserProfile
+from .onboarding import QUESTIONS, apply_onboarding, build_plan, lesson_of_the_day, validate_answers
+from .services import apply_live_streaks, award_if_goal_reached, streak_from_dates
 
 
 # ---------------------------------------------------------------------------
@@ -20,33 +23,44 @@ from .services import apply_live_streaks, award_if_goal_reached
 
 def register_view(request):
     if request.user.is_authenticated:
-        return redirect('habits')
+        return redirect('today')
+
+    # Ro'yxatdan o'tishdan oldin savolnoma to'ldirilgan bo'lishi kerak
+    answers = request.session.get('onboarding')
+    if not answers:
+        return redirect('onboarding')
 
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            # Foydalanuvchi uchun avtomatik UserProfile yaratamiz
+            user.first_name = request.POST.get('first_name', '').strip()[:30]
+            user.save(update_fields=['first_name'])
             UserProfile.objects.get_or_create(user=user)
+            apply_onboarding(user, answers)
+            request.session.pop('onboarding', None)
             login(request, user)
-            messages.success(request, "Muvaffaqiyatli ro'yxatdan o'tdingiz!")
-            return redirect('habits')
+            messages.success(request, "Твой план готов. Начинаем!")
+            return redirect('today')
     else:
         form = UserCreationForm()
 
-    return render(request, 'dashboard/register.html', {'form': form})
+    return render(request, 'dashboard/register.html', {
+        'form': form,
+        'first_name': request.POST.get('first_name', ''),
+    })
 
 
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect('habits')
+        return redirect('today')
 
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect('habits')
+            return redirect('today')
     else:
         form = AuthenticationForm()
 
@@ -56,6 +70,45 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect('login')
+
+
+# ---------------------------------------------------------------------------
+# Welcome + onboarding (before register / login)
+# ---------------------------------------------------------------------------
+
+def welcome_view(request):
+    if request.user.is_authenticated:
+        return redirect('today')
+    return render(request, 'dashboard/welcome.html')
+
+
+def onboarding_view(request):
+    if request.user.is_authenticated:
+        return redirect('today')
+    return render(request, 'dashboard/onboarding.html', {'questions': QUESTIONS})
+
+
+@require_POST
+def onboarding_save(request):
+    try:
+        raw = json.loads(request.POST.get('answers', ''))
+    except ValueError:
+        raw = None
+    answers = validate_answers(raw)
+    if answers is None:
+        messages.error(request, "Ответы не сохранились. Попробуй ещё раз.")
+        return redirect('onboarding')
+    request.session['onboarding'] = answers
+    return redirect('onboarding_plan')
+
+
+def onboarding_plan_view(request):
+    if request.user.is_authenticated:
+        return redirect('today')
+    answers = request.session.get('onboarding')
+    if not answers:
+        return redirect('onboarding')
+    return render(request, 'dashboard/onboarding_plan.html', {'plan': build_plan(answers)})
 
 
 # ---------------------------------------------------------------------------
@@ -125,19 +178,10 @@ def account_view(request):
     return render(request, 'dashboard/account.html', context)
 
 
-@login_required
 def index(request):
-    profile, _ = UserProfile.objects.get_or_create(user=request.user)
-    today = timezone.localdate()
-
-    today_logs = TimeLog.objects.filter(user=request.user, date=today)
-    total_time = sum(log.duration_minutes for log in today_logs)
-
-    context = {
-        'profile': profile,
-        'total_time': total_time,
-    }
-    return render(request, 'dashboard/index.html', context)
+    if request.user.is_authenticated:
+        return redirect('today')
+    return redirect('welcome')
 
 
 # ---------------------------------------------------------------------------
@@ -347,51 +391,55 @@ def leaderboard_view(request):
 # Challenges
 # ---------------------------------------------------------------------------
 
+def _challenge_state(c, user, today):
+    """Fills a Challenge object with progress info (calendar cells, counters, status)."""
+    goal = c.habit.daily_goal_minutes or 1
+    end = c.start_date + timedelta(days=c.days - 1)
+
+    rows = (TimeLog.objects
+            .filter(user=user, habit=c.habit, date__range=(c.start_date, end))
+            .values('date')
+            .annotate(total=Sum('duration_minutes')))
+    done_dates = {r['date'] for r in rows if r['total'] >= goal}
+
+    cells, missed = [], 0
+    for i in range(c.days):
+        d = c.start_date + timedelta(days=i)
+        if d in done_dates:
+            state = 'done'
+        elif d > today:
+            state = 'future'
+        elif d == today:
+            state = 'today'
+        else:
+            state = 'missed'
+            missed += 1
+        cells.append({'state': state, 'day': i + 1})
+
+    c.cells = cells
+    c.done_days = len(done_dates)
+    c.missed_days = missed
+    c.pct = int(c.done_days * 100 / c.days)
+    c.days_left = max(0, (end - today).days)
+    c.day_number = min(max((today - c.start_date).days + 1, 1), c.days)
+    c.today_done = today in done_dates
+    if c.done_days == c.days:
+        c.status = 'success'
+    elif today > end:
+        c.status = 'finished'
+    else:
+        c.status = 'active'
+    return c
+
+
 @login_required
 def challenges_view(request):
     today = timezone.localdate()
     challenges = list(
         Challenge.objects.filter(user=request.user).select_related('habit')
     )
-
     for c in challenges:
-        goal = c.habit.daily_goal_minutes or 1
-        end = c.start_date + timedelta(days=c.days - 1)
-
-        rows = (TimeLog.objects
-                .filter(user=request.user, habit=c.habit,
-                        date__range=(c.start_date, end))
-                .values('date')
-                .annotate(total=Sum('duration_minutes')))
-        done_dates = {r['date'] for r in rows if r['total'] >= goal}
-
-        cells, missed = [], 0
-        for i in range(c.days):
-            d = c.start_date + timedelta(days=i)
-            if d in done_dates:
-                state = 'done'
-            elif d > today:
-                state = 'future'
-            elif d == today:
-                state = 'today'
-            else:
-                state = 'missed'
-                missed += 1
-            cells.append({'state': state, 'day': i + 1})
-
-        c.cells = cells
-        c.done_days = len(done_dates)
-        c.missed_days = missed
-        c.pct = int(c.done_days * 100 / c.days)
-        c.days_left = max(0, (end - today).days)
-        c.day_number = min(max((today - c.start_date).days + 1, 1), c.days)
-        c.today_done = today in done_dates
-        if c.done_days == c.days:
-            c.status = 'success'
-        elif today > end:
-            c.status = 'finished'
-        else:
-            c.status = 'active'
+        _challenge_state(c, request.user, today)
 
     return render(request, 'dashboard/challenges.html', {
         'challenges': challenges,
@@ -524,6 +572,211 @@ def stats_view(request):
         'next_y': next_y, 'next_m': next_m, 'has_next': has_next,
     })
 
+
+# ---------------------------------------------------------------------------
+# Daily routine (plan dnya)
+# ---------------------------------------------------------------------------
+
+def _routine_items(user, today=None):
+    """Routine items with status: past / current / upcoming, and whether the linked habit is done today."""
+    today = today or timezone.localdate()
+    now_t = timezone.localtime().time()
+    items = list(RoutineItem.objects.filter(user=user).select_related('habit'))
+
+    minutes = {r['habit_id']: r['total']
+               for r in (TimeLog.objects.filter(user=user, date=today)
+                         .values('habit_id').annotate(total=Sum('duration_minutes')))}
+
+    for i, it in enumerate(items):
+        if it.end_time:
+            eff_end = it.end_time
+        elif i + 1 < len(items):
+            eff_end = items[i + 1].start_time
+        else:
+            eff_end = dtime(23, 59, 59)
+
+        if now_t >= eff_end:
+            it.status = 'past'
+        elif now_t >= it.start_time:
+            it.status = 'current'
+        else:
+            it.status = 'upcoming'
+
+        it.habit_done = bool(it.habit and minutes.get(it.habit_id, 0) >= (it.habit.daily_goal_minutes or 1))
+    return items
+
+
+def _parse_hhmm(value):
+    try:
+        return datetime.strptime((value or '').strip(), '%H:%M').time()
+    except ValueError:
+        return None
+
+
+def _routine_from_post(request):
+    """Returns (data, error). data = dict(title, start, end, habit)."""
+    title = request.POST.get('title', '').strip()[:120]
+    start = _parse_hhmm(request.POST.get('start'))
+    end_raw = request.POST.get('end', '').strip()
+    end = _parse_hhmm(end_raw) if end_raw else None
+    habit = Habit.objects.filter(id=request.POST.get('habit_id') or 0, user=request.user).first()
+
+    if not title or not start:
+        return None, "Укажите название и время начала"
+    if end_raw and end is None:
+        return None, "Неверное время окончания"
+    if end and end <= start:
+        return None, "Время окончания должно быть позже начала"
+    return {'title': title, 'start_time': start, 'end_time': end, 'habit': habit}, None
+
+
+@login_required
+def routine_view(request):
+    today = timezone.localdate()
+    items = _routine_items(request.user, today)
+    current = next((it for it in items if it.status == 'current'), None)
+    return render(request, 'dashboard/routine.html', {
+        'items': items,
+        'current': current,
+        'habits': Habit.objects.filter(user=request.user).order_by('id'),
+        'weekday': WEEKDAYS_FULL[today.weekday()],
+        'date_text': f"{today.day} {MONTHS_GEN[today.month]}",
+    })
+
+
+@login_required
+@require_POST
+def add_routine(request):
+    data, error = _routine_from_post(request)
+    if error:
+        messages.error(request, error)
+    else:
+        RoutineItem.objects.create(user=request.user, **data)
+        messages.success(request, "Пункт добавлен в план дня")
+    return redirect('routine')
+
+
+@login_required
+@require_POST
+def edit_routine(request, item_id):
+    item = get_object_or_404(RoutineItem, id=item_id, user=request.user)
+    data, error = _routine_from_post(request)
+    if error:
+        messages.error(request, error)
+    else:
+        for k, val in data.items():
+            setattr(item, k, val)
+        item.save()
+        messages.success(request, "Изменения сохранены")
+    return redirect('routine')
+
+
+@login_required
+@require_POST
+def delete_routine(request, item_id):
+    item = get_object_or_404(RoutineItem, id=item_id, user=request.user)
+    item.delete()
+    messages.success(request, "Пункт удалён")
+    return redirect('routine')
+
+
+# ---------------------------------------------------------------------------
+# Today (home screen)
+# ---------------------------------------------------------------------------
+
+WEEKDAYS_FULL = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+WEEKDAYS_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+MONTHS_GEN = ['', 'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+              'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+
+
+@login_required
+def today_view(request):
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+    now = timezone.localtime()
+    today = now.date()
+
+    hour = now.hour
+    if hour < 5:
+        greeting = 'Доброй ночи'
+    elif hour < 12:
+        greeting = 'Доброе утро'
+    elif hour < 18:
+        greeting = 'Добрый день'
+    else:
+        greeting = 'Добрый вечер'
+    name = request.user.first_name or request.user.username
+
+    # Bugungi vaqt (faqat timer loglaridan)
+    habits = list(Habit.objects.filter(user=request.user).order_by('id'))
+    minutes = {r['habit_id']: r['total']
+               for r in (TimeLog.objects.filter(user=request.user, date=today)
+                         .values('habit_id').annotate(total=Sum('duration_minutes')))}
+    total_today = sum(minutes.values())
+
+    goal_sum = capped_sum = done_count = 0
+    for h in habits:
+        h.today_minutes = minutes.get(h.id, 0)
+        goal = h.daily_goal_minutes or 1
+        h.pct = min(100, int(h.today_minutes * 100 / goal))
+        h.done = h.today_minutes >= goal
+        goal_sum += goal
+        capped_sum += min(h.today_minutes, goal)
+        done_count += 1 if h.done else 0
+    overall_pct = int(capped_sum * 100 / goal_sum) if goal_sum else 0
+
+    # Streak va haftalik chiziq: kun "bajarilgan" = kamida bitta habit maqsadga yetgan
+    completed_dates = set(HabitLog.objects.filter(user=request.user, completed=True)
+                          .values_list('date', flat=True))
+    if done_count:
+        completed_dates.add(today)
+    streak = streak_from_dates(completed_dates, today)
+    apply_live_streaks(request.user, habits)
+
+    week = []
+    for i in range(6, -1, -1):
+        d = today - timedelta(days=i)
+        week.append({'label': WEEKDAYS_SHORT[d.weekday()], 'day': d.day,
+                     'done': d in completed_dates, 'today': d == today})
+
+    # Faol challenge'lar (eng ko'pi bilan 3 ta)
+    active = []
+    for c in Challenge.objects.filter(user=request.user).select_related('habit'):
+        _challenge_state(c, request.user, today)
+        if c.status == 'active':
+            active.append(c)
+
+    ob = getattr(request.user, 'onboarding', None)
+    lesson = lesson_of_the_day(ob.focus if ob else 'discipline', today)
+
+    routine_all = _routine_items(request.user, today)
+    routine_next = [it for it in routine_all if it.status != 'past'][:3]
+
+    return render(request, 'dashboard/today.html', {
+        'profile': profile,
+        'lesson': lesson,
+        'routine': routine_next,
+        'has_routine': bool(routine_all),
+        'greeting': greeting,
+        'name': name,
+        'weekday': WEEKDAYS_FULL[today.weekday()],
+        'date_text': f"{today.day} {MONTHS_GEN[today.month]}",
+        'habits': habits,
+        'total_habits': len(habits),
+        'done_count': done_count,
+        'overall_pct': overall_pct,
+        'all_done': bool(habits) and done_count == len(habits),
+        'streak': streak,
+        'time_text': fmt_minutes(total_today),
+        'week': week,
+        'challenges': active[:3],
+    })
+
+
+# ---------------------------------------------------------------------------
+# PWA: service worker (served from the site root so it controls the whole app)
+# ---------------------------------------------------------------------------
+
 def service_worker(request):
     js = """
 self.addEventListener('install', e => self.skipWaiting());
@@ -533,4 +786,4 @@ self.addEventListener('fetch', e => {});
     resp = HttpResponse(js, content_type='application/javascript')
     resp['Service-Worker-Allowed'] = '/'
     resp['Cache-Control'] = 'no-cache'
-    return resp 
+    return resp

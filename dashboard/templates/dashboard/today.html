@@ -1,0 +1,294 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<style id="today-css">
+/* =====================================================================
+   "Сегодня" screen
+   ===================================================================== */
+@keyframes ringin{from{stroke-dasharray:0 100}}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.tw{max-width:640px;margin:0 auto}
+.tw>*{animation:rise .45s ease both}
+.t-head{margin:6px 4px 18px}
+.t-hello{font-size:15px;color:#86868b;font-weight:500}
+.t-title{font-size:36px;font-weight:700;letter-spacing:-0.04em;line-height:1.1;margin-top:2px}
+.t-date{font-size:15px;color:#6e6e73;margin-top:4px}
+.t-card{background:#fff;border-radius:24px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 28px -8px rgba(0,0,0,.08)}
+.t-sec{display:flex;justify-content:space-between;align-items:baseline;margin:28px 4px 12px}
+.t-sec h2{font-size:22px;font-weight:700;letter-spacing:-0.03em}
+.t-sec a{font-size:14px;color:#6e6e73;text-decoration:none;font-weight:500}
+.t-sec a i{font-size:10px;margin-left:2px}
+
+.hero{display:flex;align-items:center;gap:22px}
+.big-ring{position:relative;width:132px;height:132px;flex:none}
+.big-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.big-ring .track{fill:none;stroke:#ececf0;stroke-width:9}
+.big-ring .fill{fill:none;stroke:#1d1d1f;stroke-width:9;stroke-linecap:round;animation:ringin 1.1s cubic-bezier(.2,.8,.2,1)}
+.big-ring.done .fill{stroke:#34c759}
+.big-ring .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.big-ring .pct{font-size:32px;font-weight:700;letter-spacing:-0.04em;line-height:1;font-variant-numeric:tabular-nums}
+.big-ring .lbl{font-size:11px;color:#86868b;margin-top:3px;font-weight:500}
+[stroke-dasharray^="0 "]{opacity:0}
+.hero-stats{flex:1;min-width:0;display:grid;gap:14px}
+.hstat{display:flex;align-items:center;gap:11px}
+.hstat .ic{width:36px;height:36px;border-radius:50%;background:#f5f5f7;color:#1d1d1f;display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+.hstat .ic.flame{background:#fff3e0;color:#ff9500}
+.hstat .v{font-size:17px;font-weight:700;letter-spacing:-0.025em;line-height:1.15;white-space:nowrap}
+.hstat .unit{font-size:13px;font-weight:500;color:#86868b;letter-spacing:0}
+.hstat .k{font-size:12px;color:#86868b;font-weight:500}
+
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:20px;padding-top:16px;border-top:.5px solid rgba(0,0,0,.09)}
+.wd{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11px;color:#86868b;font-weight:600}
+.wd .dot{width:30px;height:30px;border-radius:50%;background:#f5f5f7;color:#aeaeb2;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.wd.today{color:#1d1d1f}
+.wd.today .dot{background:#fff;border:2px solid #1d1d1f;color:#1d1d1f}
+.wd.done .dot{background:#1d1d1f;color:#fff;border:none}
+.wd .dot i{font-size:11px}
+
+.done-banner{margin-top:12px;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-radius:16px;
+  background:#e8f9ed;color:#248a3d;font-size:14px;font-weight:600}
+
+.h-row{display:flex;align-items:center;gap:14px;padding:14px 16px;background:#fff;border-radius:20px;margin-bottom:10px;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px -8px rgba(0,0,0,.07)}
+.mini-ring{position:relative;width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center}
+.mini-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)}
+.mini-ring .track{fill:none;stroke:#ececf0;stroke-width:4}
+.mini-ring .fill{fill:none;stroke:#1d1d1f;stroke-width:4;stroke-linecap:round;animation:ringin .9s cubic-bezier(.2,.8,.2,1)}
+.mini-ring.done .fill{stroke:#34c759}
+.mini-ring i{font-size:14px;color:#1d1d1f}
+.mini-ring.done i{color:#34c759}
+.h-info{flex:1;min-width:0}
+.h-name{font-size:16px;font-weight:600;letter-spacing:-0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.h-meta{font-size:13px;color:#86868b;margin-top:2px;font-variant-numeric:tabular-nums}
+.h-meta b{color:#1d1d1f;font-weight:600}
+.h-meta .flame{color:#ff9500;font-weight:600}
+.h-meta .ok{color:#248a3d;font-weight:600}
+.play{width:44px;height:44px;border-radius:50%;background:#1d1d1f;color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:14px;text-decoration:none;flex:none;transition:transform .15s,background .15s;padding-left:2px}
+.play:active{transform:scale(.9)}
+.h-row.done .play{background:#f5f5f7;color:#1d1d1f}
+
+.c-row{display:block;background:#fff;border-radius:20px;padding:16px;margin-bottom:10px;text-decoration:none;color:inherit;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px -8px rgba(0,0,0,.07)}
+.c-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
+.c-day{font-size:13px;color:#86868b;font-weight:500;white-space:nowrap}
+.c-bar{height:6px;border-radius:99px;background:#ececf0;overflow:hidden}
+.c-bar i{display:block;height:100%;border-radius:99px;background:#1d1d1f;transition:width .6s ease}
+
+.t-link{display:flex;align-items:center;gap:14px;background:#fff;border-radius:20px;padding:14px 16px;text-decoration:none;color:inherit;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px -8px rgba(0,0,0,.07)}
+.t-link .ic{width:40px;height:40px;border-radius:12px;background:#f5f5f7;display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+.t-link .txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.t-link .txt b{font-size:16px;font-weight:600;letter-spacing:-0.02em}
+.t-link .txt small{font-size:13px;color:#86868b}
+.t-link>i{font-size:12px;color:#c7c7cc}
+
+.t-empty{text-align:center;padding:28px 20px}
+.t-empty-title{font-size:18px;font-weight:700;letter-spacing:-0.025em}
+.t-empty-sub{font-size:14px;color:#86868b;margin:6px 0 18px}
+.btn-dark{display:inline-block;background:#1d1d1f;color:#fff!important;border-radius:99px;padding:12px 24px;font-size:15px;font-weight:600;text-decoration:none}
+.btn-dark:active{transform:scale(.97)}
+
+@media (max-width:380px){
+  .hero{gap:14px}.big-ring{width:112px;height:112px}.big-ring .pct{font-size:27px}
+  .t-title{font-size:32px}
+}
+
+.r-mini{display:flex;align-items:center;gap:14px;padding:14px 16px;background:#fff;border-radius:20px;margin-bottom:10px;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px -8px rgba(0,0,0,.07)}
+.r-time{width:52px;flex:none;font-size:16px;font-weight:700;letter-spacing:-0.03em;font-variant-numeric:tabular-nums}
+.r-mini.now{background:#1d1d1f;color:#fff}
+.r-mini.now .h-name{color:#fff}
+.r-mini.now .h-meta{color:#a1a1a6}
+.r-mini.now .play{background:#fff;color:#1d1d1f}
+
+.lesson{margin-top:12px;background:#1d1d1f;color:#fff;border-radius:24px;padding:20px 22px}
+.lesson .tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#a1a1a6}
+.lesson h3{margin-top:8px;font-size:21px;font-weight:700;letter-spacing:-0.03em;line-height:1.2}
+.lesson p{margin-top:8px;font-size:15px;line-height:1.5;color:#d1d1d6}
+.lesson .act{margin-top:14px;display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.1);font-size:14px;line-height:1.4;font-weight:500}
+.lesson .act i{margin-top:2px;font-size:13px}
+</style>
+
+<div class="tw">
+
+    {% if messages %}
+    <div class="space-y-2 mb-4">
+        {% for message in messages %}
+        <div class="t-card" style="padding:12px 16px;display:flex;align-items:center;gap:10px;font-size:14px;font-weight:500">
+            <i class="fa-solid {% if message.tags == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"
+               style="color:{% if message.tags == 'error' %}#ff3b30{% else %}#34c759{% endif %}"></i>
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Header -->
+    <div class="t-head">
+        <div class="t-hello">{{ greeting }}, {{ name }}</div>
+        <h1 class="t-title">Сегодня</h1>
+        <div class="t-date">{{ weekday }}, {{ date_text }}</div>
+    </div>
+
+    <!-- Hero: daily progress -->
+    <section class="t-card">
+        <div class="hero">
+            <div class="big-ring {% if overall_pct >= 100 %}done{% endif %}">
+                <svg viewBox="0 0 120 120" width="132" height="132" aria-hidden="true">
+                    <circle fill="none" class="track" cx="60" cy="60" r="52" pathLength="100"/>
+                    <circle fill="none" class="fill" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="{{ overall_pct }} 100"/>
+                </svg>
+                <div class="center">
+                    <span class="pct">{{ overall_pct }}%</span>
+                    <span class="lbl">выполнено</span>
+                </div>
+            </div>
+
+            <div class="hero-stats">
+                <div class="hstat">
+                    <span class="ic flame"><i class="fa-solid fa-fire"></i></span>
+                    <div><div class="v">{{ streak }} <span class="unit">дн.</span></div><div class="k">серия</div></div>
+                </div>
+                <div class="hstat">
+                    <span class="ic"><i class="fa-solid fa-stopwatch"></i></span>
+                    <div><div class="v">{{ time_text }}</div><div class="k">время сегодня</div></div>
+                </div>
+                <div class="hstat">
+                    <span class="ic"><i class="fa-solid fa-circle-check"></i></span>
+                    <div><div class="v">{{ done_count }} <span class="unit">из {{ total_habits }}</span></div><div class="k">привычек</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Last 7 days -->
+        <div class="week">
+            {% for d in week %}
+            <div class="wd {% if d.done %}done{% endif %} {% if d.today %}today{% endif %}">
+                <span>{{ d.label }}</span>
+                <span class="dot">{% if d.done %}<i class="fa-solid fa-check"></i>{% else %}{{ d.day }}{% endif %}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {% if all_done %}
+    <div class="done-banner"><i class="fa-solid fa-circle-check"></i> Все цели на сегодня выполнены</div>
+    {% endif %}
+
+    {% if lesson %}
+    <section class="lesson">
+        <span class="tag"><i class="fa-solid fa-book-open"></i> Урок дня · {{ lesson.track_label }}</span>
+        <h3>{{ lesson.title }}</h3>
+        <p>{{ lesson.text }}</p>
+        <div class="act"><i class="fa-solid fa-bolt"></i><span>{{ lesson.action }}</span></div>
+    </section>
+    {% endif %}
+
+    <!-- Daily routine -->
+    <div class="t-sec">
+        <h2>План дня</h2>
+        <a href="{% url 'routine' %}">Все <i class="fa-solid fa-chevron-right"></i></a>
+    </div>
+
+    {% if routine %}
+        {% for it in routine %}
+        <div class="r-mini {% if it.status == 'current' %}now{% endif %}">
+            <div class="r-time">{{ it.start_time|time:"H:i" }}</div>
+            <div class="h-info">
+                <div class="h-name">{{ it.title }}</div>
+                <div class="h-meta">
+                    {% if it.status == 'current' %}Сейчас{% else %}Далее{% endif %}{% if it.end_time %} · до {{ it.end_time|time:"H:i" }}{% endif %}{% if it.habit %} · {{ it.habit.title }}{% endif %}
+                </div>
+            </div>
+            {% if it.habit %}
+            <a href="{% url 'timer' %}?habit={{ it.habit_id }}&start=1" class="play" title="Запустить таймер"><i class="fa-solid fa-play"></i></a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% elif has_routine %}
+        <a href="{% url 'routine' %}" class="t-link">
+            <span class="ic"><i class="fa-solid fa-circle-check"></i></span>
+            <span class="txt"><b>План на сегодня завершён</b><small>Все пункты уже позади</small></span>
+            <i class="fa-solid fa-chevron-right"></i>
+        </a>
+    {% else %}
+        <a href="{% url 'routine' %}" class="t-link">
+            <span class="ic"><i class="fa-solid fa-list-check"></i></span>
+            <span class="txt"><b>Составить план дня</b><small>Что и в какое время вы делаете</small></span>
+            <i class="fa-solid fa-chevron-right"></i>
+        </a>
+    {% endif %}
+
+    <!-- Habits -->
+    <div class="t-sec">
+        <h2>Привычки</h2>
+        <a href="{% url 'habits' %}">Все <i class="fa-solid fa-chevron-right"></i></a>
+    </div>
+
+    {% for h in habits %}
+    <div class="h-row {% if h.done %}done{% endif %}">
+        <div class="mini-ring {% if h.done %}done{% endif %}">
+            <svg viewBox="0 0 48 48" width="48" height="48" aria-hidden="true">
+                <circle fill="none" class="track" cx="24" cy="24" r="20" pathLength="100"/>
+                <circle fill="none" class="fill" cx="24" cy="24" r="20" pathLength="100" stroke-dasharray="{{ h.pct }} 100"/>
+            </svg>
+            <i class="fa-solid {% if h.done %}fa-check{% else %}fa-bullseye{% endif %}"></i>
+        </div>
+        <div class="h-info">
+            <div class="h-name">{{ h.title }}</div>
+            <div class="h-meta">
+                <b>{{ h.today_minutes }}</b> / {{ h.daily_goal_minutes }} мин
+                {% if h.streak %}<span class="flame">&nbsp;·&nbsp;<i class="fa-solid fa-fire"></i> {{ h.streak }}</span>{% endif %}
+            </div>
+        </div>
+        <a href="{% url 'timer' %}?habit={{ h.id }}&start=1" class="play" title="Запустить таймер">
+            <i class="fa-solid fa-play"></i>
+        </a>
+    </div>
+    {% empty %}
+    <div class="t-card t-empty">
+        <div class="empty-icon"><i class="fa-solid fa-seedling"></i></div>
+        <p class="t-empty-title">Начните с первой привычки</p>
+        <p class="t-empty-sub">Поставьте дневную цель в минутах и запускайте таймер одним нажатием.</p>
+        <a href="{% url 'habits' %}" class="btn-dark">Добавить привычку</a>
+    </div>
+    {% endfor %}
+
+    <!-- Challenges -->
+    <div class="t-sec">
+        <h2>Челленджи</h2>
+        <a href="{% url 'challenges' %}">Все <i class="fa-solid fa-chevron-right"></i></a>
+    </div>
+
+    {% for c in challenges %}
+    <a href="{% url 'challenges' %}" class="c-row">
+        <div class="c-top">
+            <div class="h-name">{{ c.title }}</div>
+            <div class="c-day">День {{ c.day_number }} из {{ c.days }}</div>
+        </div>
+        <div class="c-bar"><i style="width: {{ c.pct }}%"></i></div>
+        <div class="h-meta" style="margin-top:8px">
+            {% if c.today_done %}
+            <span class="ok"><i class="fa-solid fa-circle-check"></i> Сегодня выполнено</span>
+            {% else %}
+            Сегодня: {{ c.habit.title }}, {{ c.habit.daily_goal_minutes }} мин
+            {% endif %}
+        </div>
+    </a>
+    {% empty %}
+    <a href="{% url 'new_challenge' %}" class="t-link">
+        <span class="ic"><i class="fa-solid fa-flag-checkered"></i></span>
+        <span class="txt"><b>Начать челлендж</b><small>Например: 30 дней английского</small></span>
+        <i class="fa-solid fa-chevron-right"></i>
+    </a>
+    {% endfor %}
+
+    <!-- Stats link -->
+    <a href="{% url 'stats' %}" class="t-link" style="margin-top:22px">
+        <span class="ic"><i class="fa-solid fa-chart-column"></i></span>
+        <span class="txt"><b>Статистика</b><small>Месяц, график и карта активности</small></span>
+        <i class="fa-solid fa-chevron-right"></i>
+    </a>
+</div>
+{% endblock %}

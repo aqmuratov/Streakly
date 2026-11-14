@@ -1,0 +1,240 @@
+{% extends 'dashboard/base.html' %}
+
+{% block content %}
+<style id="routine-css">
+@keyframes rt-rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes rt-sheet{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.rt-wrap{max-width:640px;margin:0 auto}
+.rt-wrap>*{animation:rt-rise .45s ease both}
+.rt-head{margin:6px 4px 18px}
+.rt-title{font-size:36px;font-weight:700;letter-spacing:-0.04em;line-height:1.1}
+.rt-date{font-size:15px;color:#6e6e73;margin-top:4px}
+.rt-card{background:#fff;border-radius:24px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 28px -8px rgba(0,0,0,.08)}
+
+.rt-msg{display:flex;align-items:center;gap:10px;padding:12px 16px;margin-bottom:10px;border-radius:16px;background:#fff;font-size:14px;font-weight:500;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px -8px rgba(0,0,0,.07)}
+
+.rt-now{display:flex;align-items:center;gap:12px;padding:14px 18px;margin-bottom:14px;border-radius:20px;background:#1d1d1f;color:#fff}
+.rt-now .dot{width:10px;height:10px;border-radius:50%;background:#34c759;box-shadow:0 0 0 4px rgba(52,199,89,.25);flex:none}
+.rt-now b{font-size:15px;font-weight:600;letter-spacing:-0.02em}
+.rt-now small{display:block;font-size:12px;color:#a1a1a6;margin-top:1px}
+
+.rt-row{display:flex;align-items:center;gap:14px;padding:14px 14px 14px 16px;margin-bottom:10px;background:#fff;border-radius:20px;
+  box-shadow:0 1px 2px rgba(0,0,0,.04),0 6px 20px -8px rgba(0,0,0,.07);transition:opacity .2s}
+.rt-time{width:54px;flex:none;font-variant-numeric:tabular-nums}
+.rt-time b{display:block;font-size:17px;font-weight:700;letter-spacing:-0.03em;line-height:1.1}
+.rt-time span{display:block;font-size:12px;color:#86868b;margin-top:2px}
+.rt-info{flex:1;min-width:0}
+.rt-name{font-size:16px;font-weight:600;letter-spacing:-0.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rt-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:3px;font-size:13px;color:#86868b}
+.rt-chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:99px;background:#f5f5f7;color:#424245;font-size:12px;font-weight:600}
+.rt-chip.ok{background:#e8f9ed;color:#248a3d}
+.rt-actions{display:flex;align-items:center;gap:8px;flex:none}
+.rt-play{width:42px;height:42px;border-radius:50%;background:#1d1d1f;color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:13px;text-decoration:none;padding-left:2px;transition:transform .15s}
+.rt-play:active{transform:scale(.9)}
+.rt-more{width:34px;height:34px;border-radius:50%;background:#f5f5f7;color:#6e6e73;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px}
+.rt-more:hover{background:#e8e8ed;color:#1d1d1f}
+
+.rt-row.past{opacity:.5}
+.rt-row.current{background:#1d1d1f;color:#fff}
+.rt-row.current .rt-time span,.rt-row.current .rt-meta{color:#a1a1a6}
+.rt-row.current .rt-chip{background:rgba(255,255,255,.14);color:#fff}
+.rt-row.current .rt-chip.ok{background:rgba(52,199,89,.25);color:#7ee79a}
+.rt-row.current .rt-play{background:#fff;color:#1d1d1f}
+.rt-row.current .rt-more{background:rgba(255,255,255,.14);color:#fff}
+
+.rt-empty{text-align:center;padding:30px 20px}
+.rt-empty .ic{width:60px;height:60px;border-radius:50%;background:#f5f5f7;color:#1d1d1f;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 12px}
+.rt-empty h3{font-size:18px;font-weight:700;letter-spacing:-0.025em}
+.rt-empty p{font-size:14px;color:#86868b;margin:6px 0 18px}
+.rt-btn{display:inline-block;border:none;cursor:pointer;background:#1d1d1f;color:#fff;border-radius:99px;padding:12px 24px;font-size:15px;font-weight:600}
+
+.fab-add{position:fixed;right:20px;bottom:calc(88px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;
+  background:#1d1d1f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;border:none;cursor:pointer;
+  box-shadow:0 10px 24px -6px rgba(0,0,0,.45);z-index:45;transition:transform .15s}
+.fab-add:active{transform:scale(.92)}
+
+.sheet-wrap{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.32);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none}
+.sheet-wrap.open{display:block}
+.sheet{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:520px;background:#fff;border-radius:28px 28px 0 0;
+  padding:10px 20px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -20px 60px -20px rgba(0,0,0,.4);animation:rt-sheet .25s ease-out;max-height:92vh;overflow-y:auto}
+.sheet-grab{width:38px;height:5px;border-radius:99px;background:#d9d9de;margin:0 auto 14px}
+.sheet h3{font-size:20px;font-weight:700;letter-spacing:-0.03em;margin-bottom:14px}
+.sheet label{display:block;font-size:12px;font-weight:600;color:#86868b;margin:12px 2px 6px}
+.fld{width:100%;background:#f5f5f7;border:1px solid transparent;border-radius:14px;padding:13px 14px;font-size:16px;color:#1d1d1f;font-family:inherit;-webkit-appearance:none;appearance:none}
+.fld:focus{border-color:#1d1d1f;background:#fff;outline:none}
+.fld-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sheet .hint{font-size:12px;color:#86868b;margin:8px 2px 0}
+.sheet-actions{display:flex;gap:10px;margin-top:18px}
+.sheet-actions button{flex:1;border:none;cursor:pointer;border-radius:14px;padding:14px;font-size:15px;font-weight:600}
+.btn-gray{background:#f5f5f7;color:#1d1d1f}
+.btn-black{background:#1d1d1f;color:#fff}
+.btn-del{width:100%;margin-top:10px;border:none;cursor:pointer;border-radius:14px;padding:13px;font-size:15px;font-weight:600;background:#fff1f0;color:#d70015}
+</style>
+
+<div class="rt-wrap">
+
+    {% if messages %}
+    {% for message in messages %}
+    <div class="rt-msg">
+        <i class="fa-solid {% if message.tags == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"
+           style="color:{% if message.tags == 'error' %}#ff3b30{% else %}#34c759{% endif %}"></i>
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    <div class="rt-head">
+        <h1 class="rt-title">План дня</h1>
+        <div class="rt-date">{{ weekday }}, {{ date_text }}</div>
+    </div>
+
+    {% if current %}
+    <div class="rt-now">
+        <span class="dot"></span>
+        <div>
+            <b>Сейчас: {{ current.title }}</b>
+            <small>с {{ current.start_time|time:"H:i" }}{% if current.end_time %} до {{ current.end_time|time:"H:i" }}{% endif %}</small>
+        </div>
+    </div>
+    {% endif %}
+
+    {% for it in items %}
+    <div class="rt-row {{ it.status }}">
+        <div class="rt-time">
+            <b>{{ it.start_time|time:"H:i" }}</b>
+            {% if it.end_time %}<span>до {{ it.end_time|time:"H:i" }}</span>{% endif %}
+        </div>
+
+        <div class="rt-info">
+            <div class="rt-name">{{ it.title }}</div>
+            {% if it.habit %}
+            <div class="rt-meta">
+                {% if it.habit_done %}
+                <span class="rt-chip ok"><i class="fa-solid fa-circle-check"></i> {{ it.habit.title }}: цель выполнена</span>
+                {% else %}
+                <span class="rt-chip"><i class="fa-solid fa-link"></i> {{ it.habit.title }}</span>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="rt-actions">
+            {% if it.habit %}
+            <a href="{% url 'timer' %}?habit={{ it.habit_id }}&start=1" class="rt-play" title="Запустить таймер">
+                <i class="fa-solid fa-play"></i>
+            </a>
+            {% endif %}
+            <button type="button" class="rt-more" title="Изменить"
+                    data-edit
+                    data-url="{% url 'edit_routine' it.id %}"
+                    data-delete-url="{% url 'delete_routine' it.id %}"
+                    data-title="{{ it.title }}"
+                    data-start="{{ it.start_time|time:'H:i' }}"
+                    data-end="{% if it.end_time %}{{ it.end_time|time:'H:i' }}{% endif %}"
+                    data-habit="{{ it.habit_id|default_if_none:'' }}">
+                <i class="fa-solid fa-ellipsis"></i>
+            </button>
+        </div>
+    </div>
+    {% empty %}
+    <div class="rt-card rt-empty">
+        <div class="ic"><i class="fa-solid fa-list-check"></i></div>
+        <h3>Составьте план дня</h3>
+        <p>Что и в какое время вы делаете: подъём, английский, спорт, учёба. Пункт можно привязать к привычке и запускать таймер в один тап.</p>
+        <button type="button" class="rt-btn" data-add>Добавить первый пункт</button>
+    </div>
+    {% endfor %}
+</div>
+
+<button type="button" class="fab-add" data-add title="Добавить пункт"><i class="fa-solid fa-plus"></i></button>
+
+<!-- Bottom sheet -->
+<div id="sheet" class="sheet-wrap">
+    <div class="sheet" role="dialog" aria-modal="true">
+        <div class="sheet-grab"></div>
+        <h3 id="sheet-title">Новый пункт</h3>
+
+        <form id="routine-form" method="POST" action="{% url 'add_routine' %}">
+            {% csrf_token %}
+            <label>Что делать</label>
+            <input class="fld" type="text" name="title" id="f-title" maxlength="120" required placeholder="Например: Английский, зарядка, чтение">
+
+            <div class="fld-row">
+                <div>
+                    <label>Начало</label>
+                    <input class="fld" type="time" name="start" id="f-start" required>
+                </div>
+                <div>
+                    <label>Конец (необязательно)</label>
+                    <input class="fld" type="time" name="end" id="f-end">
+                </div>
+            </div>
+
+            <label>Привычка</label>
+            <select class="fld" name="habit_id" id="f-habit">
+                <option value="">Без привычки</option>
+                {% for h in habits %}
+                <option value="{{ h.id }}">{{ h.title }}</option>
+                {% endfor %}
+            </select>
+            <p class="hint">С привычкой на пункте появится кнопка запуска таймера, а выполнение считается по таймеру.</p>
+
+            <div class="sheet-actions">
+                <button type="button" class="btn-gray" data-close>Отмена</button>
+                <button type="submit" class="btn-black">Сохранить</button>
+            </div>
+        </form>
+
+        <form id="delete-form" method="POST" style="display:none" onsubmit="return confirm('Удалить пункт?');">
+            {% csrf_token %}
+            <button type="submit" class="btn-del"><i class="fa-solid fa-trash"></i> Удалить пункт</button>
+        </form>
+    </div>
+</div>
+
+<script>
+(function () {
+    const sheet = document.getElementById('sheet');
+    const form = document.getElementById('routine-form');
+    const delForm = document.getElementById('delete-form');
+    const titleEl = document.getElementById('sheet-title');
+    const f = {
+        title: document.getElementById('f-title'),
+        start: document.getElementById('f-start'),
+        end: document.getElementById('f-end'),
+        habit: document.getElementById('f-habit'),
+    };
+    const ADD_URL = form.getAttribute('action');
+
+    function open() { sheet.classList.add('open'); document.body.style.overflow = 'hidden'; }
+    function close() { sheet.classList.remove('open'); document.body.style.overflow = ''; }
+
+    document.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => {
+        titleEl.textContent = 'Новый пункт';
+        form.setAttribute('action', ADD_URL);
+        form.reset();
+        delForm.style.display = 'none';
+        open();
+        f.title.focus();
+    }));
+
+    document.querySelectorAll('[data-edit]').forEach(b => b.addEventListener('click', () => {
+        titleEl.textContent = 'Изменить пункт';
+        form.setAttribute('action', b.dataset.url);
+        f.title.value = b.dataset.title;
+        f.start.value = b.dataset.start;
+        f.end.value = b.dataset.end;
+        f.habit.value = b.dataset.habit;
+        delForm.setAttribute('action', b.dataset.deleteUrl);
+        delForm.style.display = 'block';
+        open();
+    }));
+
+    document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', close));
+    sheet.addEventListener('click', e => { if (e.target === sheet) close(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+})();
+</script>
+{% endblock %}

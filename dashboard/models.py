@@ -88,6 +88,32 @@ class Challenge(models.Model):
         ordering = ["-created_at"]
 
 
+class RoutineItem(models.Model):
+    """Kunlik tartib: soat nechida nima qilish kerak (har kuni takrorlanadi)."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    title = models.CharField(max_length=120)
+    start_time = models.TimeField()
+    end_time = models.TimeField(null=True, blank=True)
+    habit = models.ForeignKey(Habit, null=True, blank=True, on_delete=models.SET_NULL, related_name='routine_items')
+
+    class Meta:
+        ordering = ["start_time", "id"]
+
+    def __str__(self):
+        return f"{self.start_time:%H:%M} {self.title}"
+
+
+class OnboardingAnswer(models.Model):
+    """Yangi foydalanuvchi savolnomasi javoblari (shaxsiy reja shundan tuziladi)."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='onboarding')
+    answers = models.JSONField(default=dict)
+    focus = models.CharField(max_length=20, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username}: {self.focus}"
+
+
 # Yangi foydalanuvchi yaratilganda UserProfile avtomatik yaratiladi
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):

@@ -363,6 +363,18 @@
     } else if (pills.length > 0) {
         selectHabit(pills[0].dataset.id, false);
     }
+
+    // One-tap start from the "Сегодня" screen: /timer/?habit=ID&start=1
+    (function () {
+        const params = new URLSearchParams(location.search);
+        const hid = params.get('habit');
+        if (!hid) return;
+        if (!loadState() && habitsMap[hid]) {
+            selectHabit(hid, false);
+            if (params.get('start') === '1') window.startTimer();
+        }
+        history.replaceState(null, '', location.pathname);
+    })();
 })();
 </script>
 {% endblock %}
